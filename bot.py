@@ -1,7 +1,15 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
-import random, asyncio
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    filters
+)
+import random, asyncio, os
 
+TOKEN = os.getenv("BOT_TOKEN")
 active_bets = {}
 
 async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -11,13 +19,10 @@ async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("单 1:1", callback_data="sicbo:odd"),
          InlineKeyboardButton("双 1:1", callback_data="sicbo:even")]
     ]
-    await update.message.reply_photo(
-        photo="https://example.com/sicbo_start.jpg",  # 替换为你的图
-        caption="🎲 开始下注！请选择下注类型（20秒内）",
+    await update.message.reply_text(
+        "🎲 开始下注！请选择下注类型（20秒内）",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
-    # 启动倒计时 20 秒后开奖
     asyncio.create_task(lock_bets_and_roll(update.effective_chat.id, context))
 
 async def handle_type_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -25,8 +30,6 @@ async def handle_type_selection(update: Update, context: ContextTypes.DEFAULT_TY
     user_id = query.from_user.id
     chat_id = query.message.chat.id
     bet_type = query.data.split(":")[1]
-
-    # 存储用户下注类型（等待金额）
     active_bets[chat_id] = {"user_id": user_id, "type": bet_type}
     await query.answer()
     await query.message.reply_text("请输入下注金额（数字）")
@@ -50,7 +53,6 @@ async def lock_bets_and_roll(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
     emoji = {1: "⚀", 2: "⚁", 3: "⚂", 4: "⚃", 5: "⚄", 6: "⚅"}
     result_text = f"🎲 骰子结果：{' '.join([emoji[d] for d in dice])}（共 {total} 点）"
 
-    # 判断是否中奖
     bet = active_bets.get(chat_id)
     if bet:
         outcome = ""
@@ -64,16 +66,15 @@ async def lock_bets_and_roll(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
             outcome = "✅ 恭喜，买双赢了！"
         else:
             outcome = "❌ 很遗憾，您未中奖。"
-
         await context.bot.send_message(chat_id, result_text + "\n" + outcome)
         del active_bets[chat_id]
     else:
         await context.bot.send_message(chat_id, result_text + "\n没有有效下注记录。")
 
-app = ApplicationBuilder().token("YOUR_BOT_TOKEN").build()
-
-app.add_handler(CommandHandler("start", start_game))
-app.add_handler(CallbackQueryHandler(handle_type_selection, pattern="^sicbo:"))
-app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_amount))
-
-app.run_polling()
+# ✅ 启动 App
+if __name__ == "__main__":
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start_game))
+    app.add_handler(CallbackQueryHandler(handle_type_selection, pattern="^sicbo:"))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_amount))
+    app.run_polling()
