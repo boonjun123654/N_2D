@@ -1,100 +1,89 @@
-import asyncio
-import random
 import os
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.enums import ParseMode
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+import random
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ContextTypes
 
-API_TOKEN = os.getenv("BOT_TOKEN")
-bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher()
-
-# 存储下注
+TOKEN = os.getenv("BOT_TOKEN")
 bets = {}
-current_game_id = "250617001"
+game_id = "250617001"
 
-# 骰子图片路径
-dice_images = {
-    1: "🎲1",
-    2: "🎲2",
-    3: "🎲3",
-    4: "🎲4",
-    5: "🎲5",
-    6: "🎲6",
+dice_emojis = {
+    1: "🎲1", 2: "🎲2", 3: "🎲3", 4: "🎲4", 5: "🎲5", 6: "🎲6"
 }
 
-@dp.message(F.text.lower() == "开始")
-async def start_game(message: Message):
+logging.basicConfig(level=logging.INFO)
+
+async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
     bets.clear()
-    keyboard = InlineKeyboardBuilder()
-    for opt in ["大", "小", "单", "双"]:
-        keyboard.button(text=opt, callback_data=f"sicbo:{opt}")
-    await message.answer_photo(
-        photo="https://your-image-url.com/sicbo.jpg",
-        caption=f"🎲 第 {current_game_id} 局开始！请下注！倒计时 20 秒！",
-        reply_markup=keyboard.as_markup()
+    keyboard = [
+        [InlineKeyboardButton("大", callback_data="bet:大"),
+         InlineKeyboardButton("小", callback_data="bet:小")],
+        [InlineKeyboardButton("单", callback_data="bet:单"),
+         InlineKeyboardButton("双", callback_data="bet:双")]
+    ]
+    await context.bot.send_photo(
+        chat_id=chat_id,
+        photo="https://i.ibb.co/6R6nH9z/sicbo-start.jpg",
+        caption=f"🎲 第 {game_id} 局开始！倒计时 20 秒！\n请选择下注类型👇",
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
-    asyncio.create_task(lock_bets_after_20s(message.chat.id))
+    context.job_queue.run_once(lock_bets, 20, chat_id=chat_id)
 
-@dp.callback_query(F.data.startswith("sicbo:"))
-async def handle_bet_type(callback: CallbackQuery):
-    bet_type = callback.data.split(":")[1]
-    user_id = callback.from_user.id
+async def choose_bet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    bet_type = query.data.split(":")[1]
     bets[user_id] = {"type": bet_type}
-    await callback.answer(f"你选择了「{bet_type}」，请输入下注金额", show_alert=True)
+    await query.answer(f"你选择了『{bet_type}』，请输入下注金额", show_alert=True)
 
-@dp.message()
-async def handle_amount(message: Message):
-    user_id = message.from_user.id
+async def input_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    text = update.message.text
     if user_id in bets and "amount" not in bets[user_id]:
         try:
-            amount = float(message.text)
+            amount = float(text)
             bets[user_id]["amount"] = amount
-            await message.reply(f"✅ 下注成功：{bets[user_id]['type']} RM{amount}")
+            await update.message.reply_text(f"✅ 下注成功：{bets[user_id]['type']} RM{amount}")
         except:
-            await message.reply("请输入有效金额")
+            await update.message.reply_text("❌ 请输入有效金额")
 
-async def lock_bets_after_20s(chat_id):
-    await asyncio.sleep(20)
-    d1, d2, d3 = random.randint(1, 6), random.randint(1, 6), random.randint(1, 6)
+async def lock_bets(context: ContextTypes.DEFAULT_TYPE):
+    chat_id = context.job.chat_id
+    d1, d2, d3 = random.randint(1,6), random.randint(1,6), random.randint(1,6)
     total = d1 + d2 + d3
-    result_type = []
-
-    if total >= 11 and total <= 17:
-        result_type.append("大")
-    elif total >= 4 and total <= 10:
-        result_type.append("小")
-    if total % 2 == 0:
-        result_type.append("双")
-    else:
-        result_type.append("单")
+    result = []
+    if 4 <= total <= 10: result.append("小")
+    if 11 <= total <= 17: result.append("大")
+    if total % 2 == 0: result.append("双")
+    else: result.append("单")
 
     winners = []
     for uid, data in bets.items():
-        if data["type"] in result_type:
+        if data["type"] in result:
             winners.append((uid, data["amount"] * 2))
 
-    dice_result = f"{dice_images[d1]} {dice_images[d2]} {dice_images[d3]}"
-    caption = f"🎲 第 {current_game_id} 局开奖成绩\n{dice_result}\n"
+    result_text = f"🎲 第 {game_id} 局开奖成绩\n{dice_emojis[d1]} {dice_emojis[d2]} {dice_emojis[d3]}（总和 {total}）\n"
     if winners:
-        caption += "\n".join([f"🎉 <a href='tg://user?id={uid}'>玩家</a> 获得 RM{amt:.2f}" for uid, amt in winners])
+        for uid, prize in winners:
+            result_text += f"🎉 <a href='tg://user?id={uid}'>玩家</a> 获得 RM{prize:.2f}\n"
     else:
-        caption += "😢 本局无人中奖"
+        result_text += "😢 本局无人中奖"
 
-    history_btn = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="历史记录", callback_data="sicbo:history")]
-    ])
+    keyboard = [[InlineKeyboardButton("📜 历史记录", callback_data="history")]]
+    await context.bot.send_message(chat_id=chat_id, text=result_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
 
-    await bot.send_message(chat_id, caption, reply_markup=history_btn)
+async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer("暂未开放历史记录", show_alert=True)
 
-@dp.callback_query(F.data == "sicbo:history")
-async def handle_history(callback: CallbackQuery):
-    await callback.answer("暂未开放历史记录", show_alert=True)
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("开始", start_game))
+    app.add_handler(CallbackQueryHandler(choose_bet, pattern="^bet:"))
+    app.add_handler(CallbackQueryHandler(history, pattern="^history$"))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, input_amount))
+    app.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
-    async def main():
-        await dp.start_polling(bot)
-    asyncio.run(main())
-
+    main()
