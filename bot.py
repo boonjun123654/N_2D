@@ -1,114 +1,142 @@
+import logging
 import os
 import random
-import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from datetime import datetime
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     ApplicationBuilder,
-    CommandHandler,
+    CallbackContext,
     CallbackQueryHandler,
+    CommandHandler,
     MessageHandler,
-    ContextTypes,
     filters,
 )
 
-TOKEN = os.getenv("BOT_TOKEN")
-bets = {}
-game_id = "250617001"
-dice_emojis = {i: f"🎲{i}" for i in range(1, 7)}
-
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# ▶️ /开始 指令处理
-async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+BET_OPTIONS = [
+    ("big", "大"),
+    ("small", "小"),
+    ("odd", "单"),
+    ("even", "双"),
+]
+
+DICE_EMOJI = {
+    1: "\u2680",
+    2: "\u2681",
+    3: "\u2682",
+    4: "\u2683",
+    5: "\u2684",
+    6: "\u2685",
+}
+
+
+def start(update: Update, context: CallbackContext) -> None:
     chat_id = update.effective_chat.id
-    bets.clear()
+    game_id = datetime.now().strftime("%d%m%H%M%S")
+    context.chat_data["game_id"] = game_id
+    context.chat_data["bets"] = {}
 
     keyboard = [
-        [InlineKeyboardButton("大", callback_data="bet:大"), InlineKeyboardButton("小", callback_data="bet:小")],
-        [InlineKeyboardButton("单", callback_data="bet:单"), InlineKeyboardButton("双", callback_data="bet:双")],
+        [InlineKeyboardButton(text, callback_data=f"bet:{key}")]
+        for key, text in BET_OPTIONS
     ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text(
+        f"{game_id}局开始！倒计时20秒！",
+        reply_markup=reply_markup,
+    )
 
-    await context.bot.send_photo(
+    context.job_queue.run_once(
+        end_game,
+        20,
         chat_id=chat_id,
-        photo="https://i.ibb.co/6R6nH9z/sicbo-start.jpg",
-        caption=f"🎲 第 {game_id} 局开始！倒计时 20 秒！\n请选择下注类型👇",
+        name=str(chat_id),
+        data={"username": update.effective_user.username or update.effective_user.first_name}
+    )
+
+
+def bet_choice(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    query.answer()
+    bet_key = query.data.split(":")[1]
+    context.user_data["bet_key"] = bet_key
+    query.edit_message_reply_markup(None)
+    query.message.reply_text("请输入下注金额：")
+    context.user_data["await_amount"] = True
+
+
+def amount_input(update: Update, context: CallbackContext) -> None:
+    if not context.user_data.get("await_amount"):
+        return
+    try:
+        amount = float(update.message.text)
+    except ValueError:
+        update.message.reply_text("请输入数字金额")
+        return
+    context.user_data["amount"] = amount
+    context.user_data["await_amount"] = False
+    update.message.reply_text("下注成功，等待开奖…")
+
+
+def end_game(context: CallbackContext) -> None:
+    chat_id = context.job.chat_id
+    game_id = context.chat_data.get("game_id", "")
+    user_bet = context.user_data.get("bet_key")
+    amount = context.user_data.get("amount")
+    dice = [random.randint(1, 6) for _ in range(3)]
+    total = sum(dice)
+
+    result_text = "".join(DICE_EMOJI[d] for d in dice)
+    win = False
+    if user_bet and amount:
+        if user_bet == "big" and total >= 11:
+            win = True
+        elif user_bet == "small" and total <= 10:
+            win = True
+        elif user_bet == "odd" and total % 2 == 1:
+            win = True
+        elif user_bet == "even" and total % 2 == 0:
+            win = True
+    mention = context.chat_data.get("winner")
+    if win:
+        mention = context.job.data.get("username") if context.job.data else "玩家"
+        result_line = f"{game_id}局开奖成绩 {result_text} @{mention} 赢得 {amount}"
+    else:
+        result_line = f"{game_id}局开奖成绩 {result_text} 没有赢家"
+    keyboard = [[InlineKeyboardButton("历史记录", callback_data="history")]]
+    context.bot.send_message(
+        chat_id=chat_id,
+        text=result_line,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-    # 开始 20 秒倒计时
-    context.job_queue.run_once(announce_result, 20, chat_id=chat_id)
 
-# ✅ 玩家点击下注类型
-async def choose_bet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+def history(update: Update, context: CallbackContext) -> None:
+    update.callback_query.answer()
+    amount = context.user_data.get("amount")
+    bet = context.user_data.get("bet_key")
+    update.callback_query.message.reply_text(
+        f"上局下注：{bet} {amount}")
 
-    user_id = query.from_user.id
-    bet_type = query.data.split(":")[1]
-    bets[user_id] = {"type": bet_type}
 
-    await query.message.reply_text(f"你选择了【{bet_type}】类型，请输入下注金额（例：10）")
+def main() -> None:
+    token = os.getenv("BOT_TOKEN")
+    if not token:
+        print("BOT_TOKEN missing")
+        return
+    app = ApplicationBuilder().token(token).build()
 
-# ✅ 玩家输入金额
-async def input_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    text = update.message.text
-
-    if user_id in bets and "amount" not in bets[user_id]:
-        try:
-            amount = float(text)
-            bets[user_id]["amount"] = amount
-            await update.message.reply_text(f"✅ 下注成功：{bets[user_id]['type']} RM{amount}")
-        except:
-            await update.message.reply_text("❌ 请输入有效的金额数字")
-
-# 🎯 20 秒后开奖
-async def announce_result(context: ContextTypes.DEFAULT_TYPE):
-    chat_id = context.job.chat_id
-
-    d1, d2, d3 = random.randint(1, 6), random.randint(1, 6), random.randint(1, 6)
-    total = d1 + d2 + d3
-
-    result_tags = []
-    if 4 <= total <= 10:
-        result_tags.append("小")
-    if 11 <= total <= 17:
-        result_tags.append("大")
-    if total % 2 == 0:
-        result_tags.append("双")
-    else:
-        result_tags.append("单")
-
-    winners = []
-    for uid, info in bets.items():
-        if info.get("amount") and info["type"] in result_tags:
-            prize = info["amount"] * 2
-            winners.append((uid, prize))
-
-    caption = f"🎲 第 {game_id} 局开奖成绩\n{dice_emojis[d1]} {dice_emojis[d2]} {dice_emojis[d3]}（总和 {total}）\n\n"
-    if winners:
-        for uid, prize in winners:
-            caption += f"🎉 <a href='tg://user?id={uid}'>玩家</a> 获得 RM{prize:.2f}\n"
-    else:
-        caption += "😢 本局无人中奖"
-
-    keyboard = [[InlineKeyboardButton("📜 历史记录", callback_data="history")]]
-    await context.bot.send_message(chat_id=chat_id, text=caption, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
-
-# ⏳ 点历史记录按钮
-async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer("暂未开放历史记录功能", show_alert=True)
-
-# 🚀 主程序入口
-def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("开始", start_game))
-    app.add_handler(CallbackQueryHandler(choose_bet, pattern="^bet:"))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.Regex("^开始$"), start))
+    app.add_handler(CallbackQueryHandler(bet_choice, pattern="^bet:"))
     app.add_handler(CallbackQueryHandler(history, pattern="^history$"))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, input_amount))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, amount_input))
 
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
