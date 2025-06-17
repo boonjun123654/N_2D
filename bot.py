@@ -1,22 +1,40 @@
-import logging, asyncio, random
+import os, logging, asyncio, random, asyncpg
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
-from db import save_bet, get_bets_by_game, clear_bets
-from utils import get_game_id, get_dice_result, get_winners, format_result_text
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, filters
+
+from utils import format_result_text, RESULT_MAP
 
 logging.basicConfig(level=logging.INFO)
+TOKEN = os.getenv("TOKEN")
+DB_URL = os.getenv("DATABASE_URL")
 
-active_bets = {}  # 临时储存下注状态
+# 初始化数据库
+async def init_db():
+    conn = await asyncpg.connect(DB_URL)
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS bets (
+            id SERIAL PRIMARY KEY,
+            chat_id BIGINT,
+            game_id TEXT,
+            user_id BIGINT,
+            username TEXT,
+            bet_type TEXT,
+            amount NUMERIC,
+            timestamp TIMESTAMPTZ
+        );
+    """)
+    return conn
 
+# /start 或 "开始"
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message:
-        await update.message.reply_text("🎲 欢迎来到 Sicbo 游戏！请输入『开始』开始新一局！")
-        return
+    app = context.application
+    if not hasattr(app, "db"):
+        app.db = await init_db()
 
-    game_id = get_game_id()
-    context.chat_data["current_game_id"] = game_id
-    context.chat_data["bets"] = []
+    chat_id = update.effective_chat.id
+    game_id = datetime.now().strftime("%y%m%d") + "001"
+    context.chat_data["game_id"] = game_id
 
     keyboard = [
         [InlineKeyboardButton("大 1:1", callback_data="bet:big"),
@@ -26,69 +44,77 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     await update.message.reply_photo(
         photo=open("images/start.jpg", "rb"),
-        caption=f"🎯 第 {game_id} 局开始！请下注！\n⏳ 倒计时 20 秒",
+        caption=f"🎯 第 {game_id} 局开始！请下注！⏳ 倒计时 20 秒",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     await asyncio.sleep(20)
     await end_game(update, context)
 
+# 玩家点击下注按钮
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    user_id = query.from_user.id
-    data = query.data
-
+    await update.callback_query.answer()
+    user = update.callback_query.from_user
+    data = update.callback_query.data
     if data.startswith("bet:"):
-        bet_type = data.split(":")[1]
-        active_bets[user_id] = {"type": bet_type}
-        await query.message.reply_text(f"你选择了 [{bet_type}]，请输入下注金额（如：10）")
+        context.user_data["bet_type"] = data.split(":")[1]
+        await update.callback_query.message.reply_text(f"你选择了【{context.user_data['bet_type']}】，请输入下注金额：")
 
+    elif data == "history":
+        rows = await context.application.db.fetch(
+            "SELECT game_id, bet_type, amount, timestamp FROM bets WHERE chat_id=$1 ORDER BY timestamp DESC LIMIT 10",
+            update.effective_chat.id)
+        if not rows:
+            text = "🕘 暂无历史记录。"
+        else:
+            text = "🕘 最近 10 局下注记录：\n" + "\n".join(
+                f"{r['timestamp'].strftime('%y%m%d')} 局 {r['bet_type']} RM{r['amount']}" for r in rows)
+        await update.callback_query.message.reply_text(text)
+
+# 玩家输入下注金额
 async def handle_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = update.message.text.strip()
-    if user_id not in active_bets or not text.isdigit():
+    if "bet_type" not in context.user_data:
+        return
+    amount = update.message.text.strip()
+    if not amount.isdigit():
+        await update.message.reply_text("请输入有效数字金额！")
         return
 
-    bet_info = active_bets[user_id]
-    bet_info["amount"] = int(text)
-    bet_info["username"] = update.message.from_user.mention_html()
+    chat_id = update.effective_chat.id
+    user = update.message.from_user
+    game_id = context.chat_data.get("game_id", datetime.now().strftime("%y%m%d") + "001")
 
-    game_id = get_game_id()
-    save_bet(update.effective_chat.id, game_id, user_id, bet_info)
-    await update.message.reply_html(f"✅ 下注成功！{bet_info['type']} / RM{bet_info['amount']}\n等待开奖…")
-    del active_bets[user_id]
+    await context.application.db.execute(
+        "INSERT INTO bets(chat_id, game_id, user_id, username, bet_type, amount, timestamp) \
+         VALUES($1,$2,$3,$4,$5,$6,now())",
+        chat_id, game_id, user.id, user.mention_html(), context.user_data["bet_type"], amount)
+    await update.message.reply_html(f"✅ 下注成功：{context.user_data['bet_type']} / RM{amount}")
+    del context.user_data["bet_type"]
 
+# 开奖流程
 async def end_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    game_id = get_game_id()
-    bets = get_bets_by_game(chat_id, game_id)
-    dice = get_dice_result()
+    game_id = context.chat_data["game_id"]
 
-    winners = get_winners(bets, dice)
-    clear_bets(chat_id, game_id)
+    rows = await context.application.db.fetch(
+        "SELECT username, bet_type, amount FROM bets WHERE chat_id=$1 AND game_id=$2",
+        chat_id, game_id)
 
-    caption = format_result_text(game_id, dice, winners)
+    dice = [random.randint(1, 6) for _ in range(3)]
+    winners = [r for r in rows if RESULT_MAP[r["bet_type"]](sum(dice))]
 
-    dice_images = [open(f"images/dice{d}.png", "rb") for d in dice]
     await context.bot.send_media_group(chat_id, [
-        InputMediaPhoto(media=img) for img in dice_images
+        InputMediaPhoto(open(f"images/dice{d}.png", "rb")) for d in dice
     ])
-    await context.bot.send_message(chat_id, caption, reply_markup=InlineKeyboardMarkup([
-        [InlineKeyboardButton("📜 历史记录", callback_data="history")]
-    ]))
+    caption = format_result_text(game_id, dice, winners)
+    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("📜 历史记录", callback_data="history")]])
+    await context.bot.send_message(chat_id, caption, reply_markup=keyboard)
 
-async def handle_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    await update.callback_query.message.reply_text("🕘 历史记录功能尚在开发中。")
-
+# 启动入口
 def main():
-    app = Application.builder().token("YOUR_TELEGRAM_BOT_TOKEN").build()
-
+    app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_amount))
-    app.add_handler(CallbackQueryHandler(handle_callback, pattern="^bet:"))
-    app.add_handler(CallbackQueryHandler(handle_history, pattern="^history$"))
-
+    app.add_handler(CallbackQueryHandler(handle_callback))
     app.run_polling()
 
 if __name__ == "__main__":
