@@ -4,6 +4,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 import random, os
+from pytz import timezone
+
+MY_TZ = timezone("Asia/Kuala_Lumpur")
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
@@ -23,7 +26,7 @@ class DrawResult(db.Model):
 
 # ==== 号码生成函数 ====
 def generate_numbers_for_time(hour, minute):
-    now = datetime.now()
+    now = datetime.now(MY_TZ)
     draw_code = now.strftime(f"%Y%m%d/{hour:02d}{minute:02d}")
     markets = list("MKTSHEBKW")
 
@@ -48,7 +51,7 @@ for hour in range(0, 24):
     for minute in [0, 10, 20, 30, 40, 50]:
         scheduler.add_job(
             generate_numbers_for_time,
-            trigger=CronTrigger(hour=hour, minute=minute),
+            trigger=CronTrigger(hour=hour, minute=minute, timezone=MY_TZ),
             args=[hour, minute],
             id=f"draw_{hour:02d}{minute:02d}",
             replace_existing=True
