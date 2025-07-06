@@ -54,3 +54,11 @@ def generate_draws():
             ))
     db.session.commit()
     return f"✅ 成功生成 {timestamp} 的号码"
+
+@app.route('/admin')
+def admin_panel():
+    if not session.get('logged_in'):
+        return redirect('/login')
+    draws = DrawResult.query.order_by(DrawResult.code.desc()).all()
+    return render_template('admin.html', draws=draws)
+
