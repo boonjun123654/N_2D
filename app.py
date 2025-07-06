@@ -12,6 +12,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 class DrawResult(db.Model):
+    __tablename__ = 'draw_results'
     id = db.Column(db.Integer, primary_key=True)
     draw_no = db.Column(db.String(20), unique=True, nullable=False)  # e.g., 20250706/9
     draw_time = db.Column(db.DateTime, nullable=False)
