@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask,render_template
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -56,9 +56,11 @@ for hour in range(0, 24):
 
 scheduler.start()
 
-@app.route('/')
-def index():
-    return "✅ 2D 自动开奖系统已启动，144组自动任务已安排"
+@app.route('/admin')
+def admin():
+    with app.app_context():
+        results = DrawResult.query.order_by(DrawResult.code.desc(), DrawResult.market.asc()).limit(100).all()
+    return render_template('admin.html', draws=results)
 
 if __name__ == '__main__':
     with app.app_context():
