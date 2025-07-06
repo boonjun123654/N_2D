@@ -28,7 +28,7 @@ class DrawResult(db.Model):
 def generate_numbers_for_time(hour, minute):
     now = datetime.now(MY_TZ)
     draw_code = now.strftime(f"%Y%m%d/{hour:02d}{minute:02d}")
-    markets = list("MKTSHEBKW")
+    markets = list("MPTSHEBKW")
 
     with app.app_context():
         for market in markets:
