@@ -1,39 +1,19 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>2D 后台管理</title>
-</head>
+<head><title>后台管理</title></head>
 <body>
-  <h2>🎲 自动生成号码</h2>
+  <h2>🎯 生成记录</h2>
   <form method="POST" action="/admin/generate">
-    <input name="draw_no" placeholder="期号 20250706-09" required>
-    <input type="datetime-local" name="draw_time" required>
-    <button type="submit">随机生成</button>
+    <button type="submit">⏱ 生成当前时间段号码</button>
   </form>
-
-  <h2✍️ 手动输入号码</h2>
-  <form method="POST" action="/admin/manual">
-    <input name="draw_no" placeholder="期号" required>
-    <input type="datetime-local" name="draw_time" required>
-    <input name="head" placeholder="头奖" required>
-    <input name="s1" placeholder="特别奖1" required>
-    <input name="s2" placeholder="特别奖2" required>
-    <input name="s3" placeholder="特别奖3" required>
-    <input name="s4" placeholder="特别奖4" required>
-    <input name="s5" placeholder="特别奖5" required>
-    <button type="submit">提交号码</button>
-  </form>
-
-  <h2>📜 开奖记录</h2>
-  <table border="1">
-    <tr><th>期号</th><th>时间</th><th>头奖</th><th>特别奖</th><th>模式</th></tr>
-    {% for d in draws %}
+  <table>
+    <tr><th>Code</th><th>Market</th><th>Head</th><th>Specials</th></tr>
+    {% for draw in draws %}
     <tr>
-      <td>{{ d.draw_no }}</td>
-      <td>{{ d.draw_time }}</td>
-      <td>{{ d.head }}</td>
-      <td>{{ d.specials|join(', ') }}</td>
-      <td>{{ d.mode }}</td>
+      <td>{{ draw.code }}</td>
+      <td>{{ draw.market }}</td>
+      <td>{{ draw.head }}</td>
+      <td>{{ draw.specials }}</td>
     </tr>
     {% endfor %}
   </table>
