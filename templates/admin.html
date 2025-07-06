@@ -1,21 +1,22 @@
 <!DOCTYPE html>
 <html>
-<head><title>后台管理</title></head>
+<head>
+  <meta charset="UTF-8">
+  <title>2D 开奖记录</title>
+</head>
 <body>
-  <h2>🎯 生成记录</h2>
-  <form method="POST" action="/admin/generate">
-    <button type="submit">⏱ 生成当前时间段号码</button>
-  </form>
-  <table>
-    <tr><th>Code</th><th>Market</th><th>Head</th><th>Specials</th></tr>
-    {% for draw in draws %}
-    <tr>
-      <td>{{ draw.code }}</td>
-      <td>{{ draw.market }}</td>
-      <td>{{ draw.head }}</td>
-      <td>{{ draw.specials }}</td>
-    </tr>
-    {% endfor %}
-  </table>
+<h2>📋 最近开奖记录</h2>
+<table border="1">
+  <tr><th>期号</th><th>市场</th><th>头奖</th><th>特别奖</th></tr>
+  {% for d in draws %}
+  <tr>
+    <td>{{ d.code }}</td>
+    <td>{{ d.market }}</td>
+    <td>{{ d.head }}</td>
+    <td>{{ d.specials }}</td>
+  </tr>
+  {% endfor %}
+</table>
 </body>
 </html>
+
