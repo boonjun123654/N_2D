@@ -56,6 +56,10 @@ for hour in range(0, 24):
 
 scheduler.start()
 
+@app.route('/')
+def index():
+    return "✅ 2D 自动开奖系统已启动，144组自动任务已安排"
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
