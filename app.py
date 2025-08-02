@@ -13,6 +13,30 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+app.secret_key = os.environ.get("SECRET_KEY", "default_secret_key")  # session 加密
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        admin_user = os.environ.get("ADMIN_USERNAME")
+        admin_pass = os.environ.get("ADMIN_PASSWORD")
+
+        if username == admin_user and password == admin_pass:
+            session['logged_in'] = True
+            return redirect(url_for('admin'))
+        else:
+            return render_template('login.html', error="❌ 用户名或密码错误")
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 # ==== 数据表定义 ====
 class DrawResult(db.Model):
     __tablename__ = 'draw_results'
@@ -61,6 +85,8 @@ scheduler.start()
 
 @app.route('/admin')
 def admin():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
     with app.app_context():
         results = DrawResult.query.order_by(DrawResult.code.desc(), DrawResult.market.asc()).limit(100).all()
     return render_template('admin.html', draws=results)
