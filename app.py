@@ -60,11 +60,17 @@ def generate_numbers_for_time(hour, minute):
                 head = formatted.pop(random.randint(0, 5))
                 head_num = int(head)
 
-                # 判断大/小
-                size_type = "大" if head_num >= 50 else "小"
+                # 判断大小
+                if 0 <= head_num <= 49:
+                    size_type = "小"
+                else:
+                    size_type = "大"
 
-                # 判断单/双
-                parity_type = "单" if head_num % 2 == 1 else "双"
+                # 判断单双（根据个位数）
+                if head_num % 2 == 0:
+                    parity_type = "双"
+                else:
+                    parity_type = "单"
 
                 specials = ",".join(formatted)
 
