@@ -40,23 +40,6 @@ def login():
     
     return render_template('login.html')
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-# ==== 数据表定义 ====
-class DrawResult(db.Model):
-    __tablename__ = 'draw_results'
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), nullable=False)
-    market = db.Column(db.String(1), nullable=False)
-    head = db.Column(db.String(2), nullable=False)
-    specials = db.Column(db.String(20), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    __table_args__ = (db.UniqueConstraint('code', 'market', name='_code_market_uc'),)
-
-# ==== 号码生成函数 ====
 def generate_numbers_for_time(hour, minute):
     now = datetime.now(MY_TZ)
     draw_code = now.strftime(f"%Y%m%d/{hour:02d}{minute:02d}")
@@ -69,8 +52,24 @@ def generate_numbers_for_time(hour, minute):
                 numbers = random.sample(range(1, 100), 6)
                 formatted = [f"{n:02d}" for n in numbers]
                 head = formatted.pop(random.randint(0, 5))
+                head_num = int(head)
+
+                # 判断大/小
+                size_type = "大" if head_num >= 50 else "小"
+
+                # 判断单/双
+                parity_type = "单" if head_num % 2 == 1 else "双"
+
                 specials = ",".join(formatted)
-                result = DrawResult(code=draw_code, market=market, head=head, specials=specials)
+
+                result = DrawResult(
+                    code=draw_code,
+                    market=market,
+                    head=head,
+                    specials=specials,
+                    size_type=size_type,
+                    parity_type=parity_type
+                )
                 db.session.add(result)
         db.session.commit()
         print(f"✅ {draw_code} 号码生成完成")
