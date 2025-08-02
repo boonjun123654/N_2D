@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
+from models import db, DrawResult
 import random, os
 from pytz import timezone
 
