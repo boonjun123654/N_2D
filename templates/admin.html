@@ -73,6 +73,8 @@
         <th>市场</th>
         <th>头奖</th>
         <th>特别奖</th>
+        <th>大小</th>
+        <th>单双</th>
         <th>生成时间</th>
       </tr>
     </thead>
@@ -83,6 +85,8 @@
         <td>{{ d.market }}</td>
         <td style="color:#d63384;font-weight:600;">{{ d.head }}</td>
         <td>{{ d.specials }}</td>
+        <td>{{ d.size_type }}</td>
+        <td>{{ d.parity_type }}</td>
         <td>{{ d.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
       </tr>
       {% endfor %}
@@ -93,3 +97,4 @@
   {% endif %}
 </body>
 </html>
+
