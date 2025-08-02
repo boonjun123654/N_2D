@@ -15,6 +15,14 @@ db = SQLAlchemy(app)
 
 app.secret_key = os.environ.get("SECRET_KEY", "default_secret_key")  # session 加密
 
+@app.route('/')
+def index():
+    # 如果已经登录，直接去 /admin，否则去 /login
+    if session.get('logged_in'):
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
