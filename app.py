@@ -12,7 +12,7 @@ MY_TZ = timezone("Asia/Kuala_Lumpur")
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+db.init_app(app)
 
 app.secret_key = os.environ.get("SECRET_KEY", "default_secret_key")  # session 加密
 
