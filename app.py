@@ -41,6 +41,11 @@ def login():
     
     return render_template('login.html')
 
+@app.route('/logout')
+def logout():
+    session.clear()  # 清除登录状态
+    return redirect(url_for('login'))
+
 def generate_numbers_for_time(hour, minute):
     now = datetime.now(MY_TZ)
     draw_code = now.strftime(f"%Y%m%d/{hour:02d}{minute:02d}")
