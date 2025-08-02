@@ -12,5 +12,5 @@ class DrawResult(db.Model):
     specials = db.Column(db.String(20), nullable=False)  # 特别奖
     size_type = db.Column(db.String(2), nullable=False)   # 大 or 小
     parity_type = db.Column(db.String(2), nullable=False) # 单 or 双
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(MY_TZ))
     __table_args__ = (db.UniqueConstraint('code', 'market', name='_code_market_uc'),)
