@@ -80,18 +80,20 @@ def generate_numbers_for_time(hour, minute):
 # ==== 启动 APScheduler ====
 scheduler = BackgroundScheduler()
 
-# 每小时 00/10/20/30/40/50 启动（共 144 个）
-for hour in range(0, 24):
-    for minute in [0, 10, 20, 30, 40, 50]:
-        scheduler.add_job(
-            generate_numbers_for_time,
-            trigger=CronTrigger(hour=hour, minute=minute, timezone=MY_TZ),
-            args=[hour, minute],
-            id=f"draw_{hour:02d}{minute:02d}",
-            replace_existing=True
-        )
+if os.environ.get("RUN_MAIN") == "true":
+    scheduler = BackgroundScheduler()
+    for hour in range(0, 24):
+        for minute in [0, 10, 20, 30, 40, 50]:
+            scheduler.add_job(
+                generate_numbers_for_time,
+                trigger=CronTrigger(hour=hour, minute=minute, timezone=MY_TZ),
+                args=[hour, minute],
+                id=f"draw_{hour:02d}{minute:02d}",
+                replace_existing=True
+            )
 
-scheduler.start()
+    scheduler.start()
+    print("✅ APScheduler started")
 
 @app.route('/admin')
 def admin():
