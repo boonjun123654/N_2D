@@ -1,6 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from pytz import timezone
 
+MY_TZ = timezone("Asia/Kuala_Lumpur")
 db = SQLAlchemy()
 
 class DrawResult(db.Model):
