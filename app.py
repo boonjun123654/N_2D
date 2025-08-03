@@ -55,7 +55,7 @@ def generate_numbers_for_time(hour, minute):
         for market in markets:
             exists = DrawResult.query.filter_by(code=draw_code, market=market).first()
             if not exists:
-                numbers = random.sample(range(1, 100), 6)
+                numbers = random.sample(range(0, 100), 6)
                 formatted = [f"{n:02d}" for n in numbers]
                 head = formatted.pop(random.randint(0, 5))
                 head_num = int(head.lstrip("0") or "0")
