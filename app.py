@@ -2,7 +2,7 @@ from flask import Flask,render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime
+from datetime import datetime,timedelta
 from models import db, DrawResult
 import random, os
 from pytz import timezone
@@ -10,6 +10,7 @@ from pytz import timezone
 MY_TZ = timezone("Asia/Kuala_Lumpur")
 
 app = Flask(__name__)
+app.permanent_session_lifetime = timedelta(hours=12)  # 登录有效期12小时
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
@@ -34,6 +35,7 @@ def login():
         admin_pass = os.environ.get("ADMIN_PASSWORD")
 
         if username == admin_user and password == admin_pass:
+            session.permanent = True  # ✅ 让 session 受有效期控制
             session['logged_in'] = True
             return redirect(url_for('admin'))
         else:
@@ -77,7 +79,7 @@ def generate_numbers_for_time(hour, minute):
         db.session.commit()
         print(f"✅ {draw_code} 号码生成完成")
 
-if os.environ.get("RUN_MAIN") == "true":
+if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
     scheduler = BackgroundScheduler()
     for hour in range(0, 24):
         for minute in [0, 10, 20, 30, 40, 50]:
