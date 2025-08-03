@@ -58,19 +58,10 @@ def generate_numbers_for_time(hour, minute):
                 numbers = random.sample(range(1, 100), 6)
                 formatted = [f"{n:02d}" for n in numbers]
                 head = formatted.pop(random.randint(0, 5))
-                head_num = int(head)
+                head_num = int(head.lstrip("0") or "0")
 
-                # 判断大小
-                if 0 <= head_num <= 49:
-                    size_type = "小"
-                else:
-                    size_type = "大"
-
-                # 判断单双（根据个位数）
-                if head_num % 2 == 0:
-                    parity_type = "双"
-                else:
-                    parity_type = "单"
+                size_type = "小" if 0 <= head_num <= 49 else "大"
+                parity_type = "双" if head_num % 2 == 0 else "单"
 
                 specials = ",".join(formatted)
 
