@@ -77,9 +77,6 @@ def generate_numbers_for_time(hour, minute):
         db.session.commit()
         print(f"✅ {draw_code} 号码生成完成")
 
-# ==== 启动 APScheduler ====
-scheduler = BackgroundScheduler()
-
 if os.environ.get("RUN_MAIN") == "true":
     scheduler = BackgroundScheduler()
     for hour in range(0, 24):
@@ -91,7 +88,6 @@ if os.environ.get("RUN_MAIN") == "true":
                 id=f"draw_{hour:02d}{minute:02d}",
                 replace_existing=True
             )
-
     scheduler.start()
     print("✅ APScheduler started")
 
