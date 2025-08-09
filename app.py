@@ -81,15 +81,14 @@ def generate_numbers_for_time(hour, minute):
 
 if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
     scheduler = BackgroundScheduler()
-    for hour in range(0, 24):
-        for minute in [0, 10, 20, 30, 40, 50]:
-            scheduler.add_job(
-                generate_numbers_for_time,
-                trigger=CronTrigger(hour=hour, minute=minute, timezone=MY_TZ),
-                args=[hour, minute],
-                id=f"draw_{hour:02d}{minute:02d}",
-                replace_existing=True
-            )
+    for hour in range(9, 24):
+        scheduler.add_job(
+            generate_numbers_for_time,
+            trigger=CronTrigger(hour=hour, minute=50, timezone=MY_TZ),
+            args=[hour, 50],
+            id=f"draw_{hour:02d}50",
+            replace_existing=True
+        )
     scheduler.start()
     print("✅ APScheduler started")
 
