@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime,timedelta
-from models import db, DrawResult
+from models import db, DrawResult, GenRule2D
 import random, os
 from pytz import timezone
 
@@ -47,6 +47,11 @@ def login():
 def logout():
     session.clear()  # 清除登录状态
     return redirect(url_for('login'))
+
+def _parse_markets_str(s: str):
+    if not s or not s.strip():
+        return set(list("MPTSHEBKW"))  # 全部市场
+    return set([x.strip().upper() for x in s.split(",") if x.strip()])
 
 def generate_numbers_for_time(hour, minute):
     now = datetime.now(MY_TZ)
@@ -92,13 +97,66 @@ if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
     scheduler.start()
     print("✅ APScheduler started")
 
+def _require_login():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    return None
+
+@app.route('/admin/rules/add', methods=['POST'])
+def admin_add_rule():
+    need = _require_login()
+    if need: return need
+    number = request.form.get('number', '').strip()
+    action = request.form.get('action', 'exclude')
+    scope  = request.form.get('scope', 'any')
+    markets = ",".join(request.form.getlist('markets'))  # 多选
+    note = request.form.get('note', '')
+
+    # datetime-local -> 本地时间
+    start_raw = request.form.get('start_at')
+    end_raw   = request.form.get('end_at')
+    # 格式：YYYY-MM-DDTHH:MM
+    start_dt = MY_TZ.localize(datetime.strptime(start_raw, "%Y-%m-%dT%H:%M"))
+    end_dt   = MY_TZ.localize(datetime.strptime(end_raw, "%Y-%m-%dT%H:%M"))
+
+    number = number.zfill(2)
+    rule = GenRule2D(
+        number=number, action=action, scope=scope,
+        markets=markets, start_at=start_dt, end_at=end_dt,
+        active=True, note=note
+    )
+    db.session.add(rule)
+    db.session.commit()
+    return redirect(url_for('admin'))
+
+@app.route('/admin/rules/<int:rid>/toggle', methods=['POST'])
+def admin_toggle_rule(rid):
+    need = _require_login()
+    if need: return need
+    r = GenRule2D.query.get_or_404(rid)
+    r.active = not r.active
+    db.session.commit()
+    return redirect(url_for('admin'))
+
+@app.route('/admin/rules/<int:rid>/delete', methods=['POST'])
+def admin_delete_rule(rid):
+    need = _require_login()
+    if need: return need
+    r = GenRule2D.query.get_or_404(rid)
+    db.session.delete(r)
+    db.session.commit()
+    return redirect(url_for('admin'))
+
 @app.route('/admin')
 def admin():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     with app.app_context():
         results = DrawResult.query.order_by(DrawResult.code.desc(), DrawResult.market.asc()).limit(100).all()
-    return render_template('admin.html', draws=results)
+        rules = GenRule2D.query.order_by(GenRule2D.created_at.desc()).all()
+    # 供 datetime-local 默认值
+    now_local = datetime.now(MY_TZ).strftime("%Y-%m-%dT%H:%M")
+    return render_template('admin.html', draws=results, rules=rules, now_local=now_local)
 
 if __name__ == '__main__':
     with app.app_context():
