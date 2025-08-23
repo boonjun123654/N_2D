@@ -1,100 +1,272 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>2D 开奖记录</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
-      font-family: "Microsoft YaHei", sans-serif;
-      background: #f7f7f7;
-      margin: 0;
-      padding: 0;
+    :root{
+      --purple-600:#4b0082;
+      --purple-500:#6a0dad;
+      --pink:#d63384;
+      --gray-50:#f7f7f7;
+      --gray-100:#f2f2f2;
+      --gray-300:#ddd;
+      --text:#222;
     }
-    h2 {
-      text-align: center;
-      padding: 15px;
-      background: #4b0082;
-      color: white;
-      margin: 0;
+    *{box-sizing:border-box}
+    body{
+      font-family:"Microsoft YaHei",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--gray-50);
+      margin:0;
+      color:var(--text);
     }
-    table {
-      width: 95%;
-      margin: 20px auto;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    h2{
+      position:relative;
+      text-align:center;
+      padding:18px 16px;
+      background:var(--purple-600);
+      color:#fff;
+      margin:0;
+      font-weight:700;
+      letter-spacing:.5px;
     }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: center;
+    .logout-btn{
+      position:absolute; right:20px; top:14px;
+      background:#d63384; color:#fff;
+      padding:8px 14px; text-decoration:none;
+      border-radius:8px; font-size:14px;
     }
-    th {
-      background: #6a0dad;
-      color: white;
-      font-weight: 600;
+    .logout-btn:hover{background:#c8235d}
+
+    /* 卡片容器（规则面板） */
+    .card{
+      width:95%;
+      margin:18px auto 10px;
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 6px 18px rgba(0,0,0,.08);
+      padding:14px 16px;
     }
-    tr:nth-child(even) {
-      background: #f2f2f2;
+    .card h3{
+      margin:0 0 12px;
+      color:var(--purple-600);
+      display:flex; align-items:center; gap:8px;
+      font-size:18px;
     }
-    .no-data {
-      text-align: center;
-      margin: 30px;
-      font-size: 16px;
-      color: #777;
+
+    /* 表格样式（通用） */
+    table{
+      width:95%;
+      margin:16px auto 26px;
+      border-collapse:collapse;
+      background:#fff;
+      box-shadow:0 4px 12px rgba(0,0,0,.08);
+      overflow:hidden;
+      border-radius:10px;
     }
-    .logout-btn {
-      position: absolute;
-      right: 20px;
-      top: 15px;
-      background: #d63384;
-      color: white;
-      padding: 6px 12px;
-      text-decoration: none;
-      border-radius: 4px;
-      font-size: 14px;
+    th,td{
+      border:1px solid var(--gray-300);
+      padding:10px 12px;
+      text-align:center;
+      font-size:14px;
     }
-    .logout-btn:hover {
-      background: #c8235d;
+    thead th{
+      background:var(--purple-500);
+      color:#fff;
+      font-weight:600;
+    }
+    tbody tr:nth-child(even){background:var(--gray-100)}
+    .no-data{ text-align:center; margin:30px; color:#777}
+
+    /* 规则表单 */
+    .rule-form{
+      display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;
+    }
+    .rule-form .field{display:flex; flex-direction:column; gap:6px}
+    .rule-form input[type="number"],
+    .rule-form input[type="text"],
+    .rule-form input[type="datetime-local"],
+    .rule-form select{
+      padding:8px 10px; border:1px solid #ccc; border-radius:8px; min-width:120px;
+      font-size:14px; background:#fff;
+    }
+    .chips{display:flex; gap:6px; flex-wrap:wrap; max-width:420px}
+    .chip{
+      background:#f4f1fa; border:1px solid #e6dbff;
+      padding:4px 8px; border-radius:999px; display:flex; gap:6px; align-items:center;
+      font-size:13px;
+    }
+    .btn{
+      padding:9px 14px; border:none; border-radius:8px; cursor:pointer;
+      background:var(--purple-500); color:#fff; font-weight:600;
+    }
+    .btn.secondary{ background:#fff; color:#333; border:1px solid #ccc}
+    .btn.danger{ background:#fff; color:#f33; border:1px solid #f33}
+    .pill{
+      display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px;
+      border:1px solid #eee; background:#fafafa;
+    }
+    .num-strong{ color:var(--pink); font-weight:700}
+    .td-actions{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap}
+    @media (max-width:920px){
+      .rule-form .field{min-width:calc(50% - 12px)}
+      .rule-form .field.wide{min-width:100%}
     }
   </style>
 </head>
 <body>
   <h2>
-    📋 最近开奖记录
+    🗒️ 最近开奖记录
     <a href="{{ url_for('logout') }}" class="logout-btn">退出登录</a>
   </h2>
 
+  <!-- 规则面板 -->
+  <div class="card">
+    <h3>🎛 自定 / 排除 生成规则</h3>
+    <form class="rule-form" method="post" action="{{ url_for('admin_add_rule') }}">
+      <div class="field">
+        <label>号码</label>
+        <input type="number" name="number" min="0" max="99" required placeholder="00~99">
+      </div>
+
+      <div class="field">
+        <label>动作</label>
+        <select name="action">
+          <option value="force">强制出现</option>
+          <option value="exclude">排除（不出现）</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>位置</label>
+        <select name="scope">
+          <option value="head">头奖</option>
+          <option value="specials">特别奖</option>
+          <option value="any" selected>任意（头奖或特别奖）</option>
+        </select>
+      </div>
+
+      <div class="field wide">
+        <label>市场（多选）</label>
+        <div class="chips">
+          {% for m in "MPTSHEBKW" %}
+            <label class="chip">
+              <input type="checkbox" name="markets" value="{{ m }}" checked> {{ m }}
+            </label>
+          {% endfor %}
+        </div>
+        <div style="margin-top:6px; display:flex; gap:8px;">
+          <button type="button" class="btn secondary" onclick="selectAllMarkets(true)">全选</button>
+          <button type="button" class="btn secondary" onclick="selectAllMarkets(false)">全不选</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>开始时间</label>
+        <input type="datetime-local" name="start_at" value="{{ now_local or '' }}" required>
+      </div>
+      <div class="field">
+        <label>结束时间</label>
+        <input type="datetime-local" name="end_at" value="{{ now_local or '' }}" required>
+      </div>
+
+      <div class="field wide">
+        <label>备注（可选）</label>
+        <input type="text" name="note" placeholder="例：47 不出现在头奖（M/H 09:00-12:00）">
+      </div>
+
+      <div class="field">
+        <button type="submit" class="btn">保存规则</button>
+      </div>
+    </form>
+
+    {% if rules %}
+      <div style="margin-top:14px; overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>号码</th>
+              <th>动作</th>
+              <th>位置</th>
+              <th>市场</th>
+              <th>开始</th>
+              <th>结束</th>
+              <th>状态</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rules %}
+              <tr>
+                <td>{{ r.id }}</td>
+                <td class="num-strong">{{ r.number }}</td>
+                <td>{{ '强制' if r.action=='force' else '排除' }}</td>
+                <td>{{ r.scope }}</td>
+                <td>{{ r.markets or '全部' }}</td>
+                <td>{{ r.start_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                <td>{{ r.end_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                <td>
+                  {% if r.active %}
+                    <span class="pill">启用</span>
+                  {% else %}
+                    <span class="pill">停用</span>
+                  {% endif %}
+                </td>
+                <td>{{ r.note or '' }}</td>
+                <td class="td-actions">
+                  <form method="post" action="{{ url_for('admin_toggle_rule', rid=r.id) }}">
+                    <button type="submit" class="btn secondary">{{ '停用' if r.active else '启用' }}</button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin_delete_rule', rid=r.id) }}" onsubmit="return confirm('确认删除该规则？');">
+                    <button type="submit" class="btn danger">删除</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+
   {% if draws %}
-  <table>
-    <thead>
-      <tr>
-        <th>期号</th>
-        <th>市场</th>
-        <th>头奖</th>
-        <th>特别奖</th>
-        <th>大小</th>
-        <th>单双</th>
-        <th>生成时间</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for d in draws %}
-      <tr>
-        <td>{{ d.code }}</td>
-        <td>{{ d.market }}</td>
-        <td style="color:#d63384;font-weight:600;">{{ d.head }}</td>
-        <td>{{ d.specials }}</td>
-        <td>{{ d.size_type }}</td>
-        <td>{{ d.parity_type }}</td>
-        <td>{{ d.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <table>
+      <thead>
+        <tr>
+          <th>期号</th>
+          <th>市场</th>
+          <th>头奖</th>
+          <th>特别奖</th>
+          <th>大小</th>
+          <th>单双</th>
+          <th>生成时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in draws %}
+          <tr>
+            <td>{{ d.code }}</td>
+            <td>{{ d.market }}</td>
+            <td class="num-strong">{{ d.head }}</td>
+            <td>{{ d.specials }}</td>
+            <td>{{ d.size_type }}</td>
+            <td>{{ d.parity_type }}</td>
+            <td>{{ d.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% else %}
-  <div class="no-data">暂无开奖记录</div>
+    <div class="no-data">暂无开奖记录</div>
   {% endif %}
+
+  <script>
+    function selectAllMarkets(checked){
+      document.querySelectorAll('input[name="markets"]').forEach(cb=>cb.checked = checked);
+    }
+  </script>
 </body>
 </html>
-
