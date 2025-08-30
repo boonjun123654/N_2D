@@ -53,6 +53,20 @@ def _parse_markets_str(s: str):
         return set(list("MPTSHEBKW"))  # 全部市场
     return set([x.strip().upper() for x in s.split(",") if x.strip()])
 
+def _get_active_rules_for_market(now_dt, market):
+    # 取时间命中的启用规则，再按 market 过滤（空/None 代表全部市场）
+    active = GenRule2D.query.filter(
+        GenRule2D.active == True,
+        GenRule2D.start_at <= now_dt,
+        GenRule2D.end_at >= now_dt
+    ).all()
+    picked = []
+    for r in active:
+        markets = _parse_markets_str(r.markets)
+        if market in markets:
+            picked.append(r)
+    return picked
+
 def generate_numbers_for_time(hour, minute):
     now = datetime.now(MY_TZ)
     draw_code = now.strftime(f"%Y%m%d/{hour:02d}{minute:02d}")
@@ -60,27 +74,98 @@ def generate_numbers_for_time(hour, minute):
 
     with app.app_context():
         for market in markets:
-            exists = DrawResult.query.filter_by(code=draw_code, market=market).first()
-            if not exists:
-                numbers = random.sample(range(0, 100), 4)
-                formatted = [f"{n:02d}" for n in numbers]
-                head = formatted.pop(random.randint(0, 3))
-                head_num = int(head.lstrip("0") or "0")
+            # 已生成则跳过
+            if DrawResult.query.filter_by(code=draw_code, market=market).first():
+                continue
 
-                size_type = "小" if 0 <= head_num <= 49 else "大"
-                parity_type = "双" if head_num % 2 == 0 else "单"
+            rules = _get_active_rules_for_market(now, market)
 
-                specials = ",".join(formatted)
+            # 分类规则
+            head_force, specials_force, any_force = set(), set(), set()
+            head_excl, specials_excl = set(), set()
 
-                result = DrawResult(
-                    code=draw_code,
-                    market=market,
-                    head=head,
-                    specials=specials,
-                    size_type=size_type,
-                    parity_type=parity_type
-                )
-                db.session.add(result)
+            for r in rules:
+                num = (r.number or "").zfill(2)
+                if r.action == "force":
+                    if r.scope == "head":
+                        head_force.add(num)
+                    elif r.scope == "specials":
+                        specials_force.add(num)
+                    else:  # any
+                        any_force.add(num)
+                else:  # exclude
+                    if r.scope == "head":
+                        head_excl.add(num)
+                    elif r.scope == "specials":
+                        specials_excl.add(num)
+                    else:  # any
+                        head_excl.add(num); specials_excl.add(num)
+
+            all_nums = [f"{i:02d}" for i in range(100)]
+            available = set(all_nums)
+
+            # 选头奖
+            head_candidates = [n for n in head_force if n not in head_excl]
+            if head_candidates:
+                head = random.choice(head_candidates)
+            else:
+                # 若没有指定 head，可尝试用 any_force 顶上（优先满足“强制出现”）
+                any_head_candidates = [n for n in any_force if n not in head_excl]
+                if any_head_candidates:
+                    head = random.choice(any_head_candidates)
+                    any_force.discard(head)
+                else:
+                    pool = list(available - head_excl)
+                    if not pool:
+                        # 极端情况：被排除覆盖，放宽为全池
+                        pool = list(available)
+                    head = random.choice(pool)
+
+            if head in available:
+                available.remove(head)
+
+            # 选特别奖（3个，不与 head 重复）
+            specials = set()
+            # 先放 specials_force
+            for n in list(specials_force):
+                if len(specials) >= 3: break
+                if n == head or n in specials_excl: continue
+                specials.add(n); available.discard(n)
+
+            # 再放 any_force
+            for n in list(any_force):
+                if len(specials) >= 3: break
+                if n == head or n in specials_excl: continue
+                specials.add(n); available.discard(n)
+
+            # 随机补齐
+            while len(specials) < 3:
+                pool = list(available - specials_excl - {head})
+                if not pool:
+                    # 极端：放宽为除了 head 以外任意
+                    pool = [x for x in all_nums if x != head and x not in specials]
+                pick = random.choice(pool)
+                specials.add(pick)
+                if pick in available:
+                    available.remove(pick)
+
+            specials_list = list(specials)
+            random.shuffle(specials_list)
+
+            head_num = int(head)
+            size_type = "小" if 0 <= head_num <= 49 else "大"
+            parity_type = "双" if head_num % 2 == 0 else "单"
+
+            result = DrawResult(
+                code=draw_code,
+                market=market,
+                head=head,
+                specials=",".join(specials_list),
+                size_type=size_type,
+                parity_type=parity_type
+            )
+            db.session.add(result)
+
         db.session.commit()
         print(f"✅ {draw_code} 号码生成完成")
 
@@ -154,9 +239,11 @@ def admin():
     with app.app_context():
         results = DrawResult.query.order_by(DrawResult.code.desc(), DrawResult.market.asc()).limit(100).all()
         rules = GenRule2D.query.order_by(GenRule2D.created_at.desc()).all()
-    # 供 datetime-local 默认值
-    now_local = datetime.now(MY_TZ).strftime("%Y-%m-%dT%H:%M")
-    return render_template('admin.html', draws=results, rules=rules, now_local=now_local)
+    now_dt = datetime.now(MY_TZ)
+    now_local = now_dt.strftime("%Y-%m-%dT%H:%M")
+    default_end = (now_dt + timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M")
+    return render_template('admin.html', draws=results, rules=rules,
+                           now_local=now_local, default_end=default_end)
 
 if __name__ == '__main__':
     with app.app_context():
