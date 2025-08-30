@@ -269,14 +269,25 @@ def admin_delete_rule(rid):
 def admin():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
+
     with app.app_context():
         results = DrawResult.query.order_by(DrawResult.code.desc(), DrawResult.market.asc()).limit(100).all()
         rules = GenRule2D.query.order_by(GenRule2D.created_at.desc()).all()
+
     now_dt = datetime.now(MY_TZ)
-    now_local = now_dt.strftime("%Y-%m-%dT%H:%M")
-    default_end = (now_dt + timedelta(hours=12)).strftime("%Y-%m-%dT%H:%M")
-    return render_template('admin.html', draws=results, rules=rules,
-                           now_local=now_local, default_end=default_end)
+    start_today = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_today   = now_dt.replace(hour=23, minute=59, second=0, microsecond=0)
+
+    start_today_local = start_today.strftime("%Y-%m-%dT%H:%M")
+    end_today_local   = end_today.strftime("%Y-%m-%dT%H:%M")
+
+    return render_template(
+        'admin.html',
+        draws=results,
+        rules=rules,
+        start_today_local=start_today_local,
+        end_today_local=end_today_local
+    )
 
 if __name__ == '__main__':
     with app.app_context():
