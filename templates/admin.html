@@ -168,7 +168,7 @@
       </div>
       <div class="field">
         <label>结束时间</label>
-        <input type="datetime-local" name="end_at" value="{{ now_local or '' }}" required>
+        <input type="datetime-local" name="end_at" value="{{ default_end or now_local or '' }}" required>
       </div>
 
       <div class="field wide">
@@ -270,3 +270,4 @@
   </script>
 </body>
 </html>
+
