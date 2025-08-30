@@ -6,112 +6,71 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
+      --purple-700:#3b0070;
       --purple-600:#4b0082;
       --purple-500:#6a0dad;
       --pink:#d63384;
       --gray-50:#f7f7f7;
       --gray-100:#f2f2f2;
+      --gray-200:#e9e9e9;
       --gray-300:#ddd;
       --text:#222;
     }
-    *{box-sizing:border-box}
+    *,*::before,*::after{box-sizing:border-box}
     body{
       font-family:"Microsoft YaHei",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:var(--gray-50);
-      margin:0;
-      color:var(--text);
+      margin:0; color:var(--text);
     }
     h2{
-      position:relative;
-      text-align:center;
-      padding:18px 16px;
-      background:var(--purple-600);
-      color:#fff;
-      margin:0;
-      font-weight:700;
-      letter-spacing:.5px;
+      position:relative; text-align:center; padding:18px 16px;
+      background:var(--purple-600); color:#fff; margin:0; font-weight:700; letter-spacing:.5px;
     }
     .logout-btn{
-      position:absolute; right:20px; top:14px;
-      background:#d63384; color:#fff;
-      padding:8px 14px; text-decoration:none;
-      border-radius:8px; font-size:14px;
+      position:absolute; right:20px; top:14px; background:#d63384; color:#fff;
+      padding:8px 14px; text-decoration:none; border-radius:8px; font-size:14px;
     }
     .logout-btn:hover{background:#c8235d}
 
-    /* 卡片容器（规则面板） */
+    /* 容器与卡片 */
+    .wrap{ width:96%; max-width:1200px; margin:18px auto; }
     .card{
-      width:95%;
-      margin:18px auto 10px;
-      background:#fff;
-      border-radius:12px;
-      box-shadow:0 6px 18px rgba(0,0,0,.08);
-      padding:14px 16px;
+      background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.07);
+      padding:18px; border:1px solid var(--gray-200);
     }
-    .card h3{
-      margin:0 0 12px;
-      color:var(--purple-600);
-      display:flex; align-items:center; gap:8px;
-      font-size:18px;
-    }
+    .card h3{ margin:0 0 14px; color:var(--purple-700); font-size:18px; }
 
-    /* 表格样式（通用） */
-    table{
-      width:95%;
-      margin:16px auto 26px;
-      border-collapse:collapse;
-      background:#fff;
-      box-shadow:0 4px 12px rgba(0,0,0,.08);
-      overflow:hidden;
-      border-radius:10px;
+    /* 规则表单（更整齐的网格布局） */
+    .rule-form{ display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; align-items:end; }
+    .col-3{ grid-column: span 3 }
+    .col-4{ grid-column: span 4 }
+    .col-6{ grid-column: span 6 }
+    .col-12{ grid-column: span 12 }
+    label{ font-size:13px; color:#555; margin-bottom:6px; display:block }
+    input[type="number"], input[type="text"], input[type="datetime-local"], select{
+      padding:9px 10px; border:1px solid #ccc; border-radius:10px; font-size:14px; width:100%; background:#fff;
     }
-    th,td{
-      border:1px solid var(--gray-300);
-      padding:10px 12px;
-      text-align:center;
-      font-size:14px;
-    }
-    thead th{
-      background:var(--purple-500);
-      color:#fff;
-      font-weight:600;
-    }
-    tbody tr:nth-child(even){background:var(--gray-100)}
-    .no-data{ text-align:center; margin:30px; color:#777}
+    .chips{ display:flex; gap:8px; flex-wrap:wrap }
+    .chip{ background:#f6f2fb; border:1px solid #eadfff; padding:6px 10px; border-radius:999px; display:flex; gap:6px; align-items:center; font-size:13px; }
+    .btn{ padding:10px 16px; border:none; border-radius:10px; cursor:pointer; background:var(--purple-500); color:#fff; font-weight:600; }
+    .btn.secondary{ background:#fff; color:#333; border:1px solid #ccc }
+    .btn.danger{ background:#fff; color:#f33; border:1px solid #f33 }
+    .pill{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #eee; background:#fafafa; }
+    .num-strong{ color:var(--pink); font-weight:700 }
 
-    /* 规则表单 */
-    .rule-form{
-      display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;
-    }
-    .rule-form .field{display:flex; flex-direction:column; gap:6px}
-    .rule-form input[type="number"],
-    .rule-form input[type="text"],
-    .rule-form input[type="datetime-local"],
-    .rule-form select{
-      padding:8px 10px; border:1px solid #ccc; border-radius:8px; min-width:120px;
-      font-size:14px; background:#fff;
-    }
-    .chips{display:flex; gap:6px; flex-wrap:wrap; max-width:640px}
-    .chip{
-      background:#f4f1fa; border:1px solid #e6dbff;
-      padding:4px 8px; border-radius:999px; display:flex; gap:6px; align-items:center;
-      font-size:13px;
-    }
-    .btn{
-      padding:9px 14px; border:none; border-radius:8px; cursor:pointer;
-      background:var(--purple-500); color:#fff; font-weight:600;
-    }
-    .btn.secondary{ background:#fff; color:#333; border:1px solid #ccc}
-    .btn.danger{ background:#fff; color:#f33; border:1px solid #f33}
-    .pill{
-      display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px;
-      border:1px solid #eee; background:#fafafa;
-    }
-    .num-strong{ color:var(--pink); font-weight:700}
-    .td-actions{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap}
-    @media (max-width:920px){
-      .rule-form .field{min-width:calc(50% - 12px)}
-      .rule-form .field.wide{min-width:100%}
+    /* 表格 */
+    table{ width:100%; border-collapse:collapse; background:#fff; overflow:hidden; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
+    th,td{ border:1px solid var(--gray-300); padding:10px 12px; text-align:center; font-size:14px; }
+    thead th{ background:var(--purple-500); color:#fff; font-weight:600 }
+    tbody tr:nth-child(even){ background:var(--gray-100) }
+    .td-actions{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap }
+    .no-data{ text-align:center; margin:26px; color:#777 }
+
+    @media (max-width:960px){
+      .rule-form{ grid-template-columns: repeat(6, 1fr); }
+      .col-6{ grid-column: span 6 }
+      .col-4{ grid-column: span 6 }
+      .col-3{ grid-column: span 3 }
     }
   </style>
 </head>
@@ -121,213 +80,182 @@
     <a href="{{ url_for('logout') }}" class="logout-btn">退出登录</a>
   </h2>
 
-  <!-- 规则面板 -->
-  <div class="card">
-    <h3>🎛 自定 / 排除 生成规则</h3>
-    <form class="rule-form" method="post" action="{{ url_for('admin_add_rule') }}">
-      <div class="field">
-        <label>号码</label>
-        <input type="number" name="number" min="0" max="99" required placeholder="00~99">
-      </div>
-
-      <div class="field">
-        <label>动作</label>
-        <select name="action">
-          <option value="force">强制出现</option>
-          <option value="exclude">排除（不出现）</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>位置</label>
-        <select name="scope">
-          <option value="head">头奖</option>
-          <option value="specials">特别奖</option>
-          <option value="any" selected>任意（头奖或特别奖）</option>
-        </select>
-      </div>
-
-      <div class="field wide">
-        <label>市场（多选）</label>
-        <div class="chips">
-          {% for m in "MPTSHEBKW" %}
-            <label class="chip">
-              <input type="checkbox" name="markets" value="{{ m }}" checked> {{ m }}
-            </label>
-          {% endfor %}
+  <div class="wrap">
+    <!-- 规则面板 -->
+    <div class="card" style="margin-bottom:16px;">
+      <h3>🎛 自定 / 排除 生成规则</h3>
+      <form class="rule-form" method="post" action="{{ url_for('admin_add_rule') }}">
+        <div class="col-3">
+          <label>号码</label>
+          <input type="number" name="number" min="0" max="99" required placeholder="00~99">
         </div>
-        <div style="margin-top:6px; display:flex; gap:8px;">
-          <button type="button" class="btn secondary" onclick="selectAllMarkets(true)">全选</button>
-          <button type="button" class="btn secondary" onclick="selectAllMarkets(false)">全不选</button>
+        <div class="col-3">
+          <label>动作</label>
+          <select name="action">
+            <option value="force">强制出现</option>
+            <option value="exclude">排除（不出现）</option>
+          </select>
         </div>
-      </div>
+        <div class="col-3">
+          <label>位置</label>
+          <select name="scope">
+            <option value="head">头奖</option>
+            <option value="specials">特别奖</option>
+            <option value="any" selected>任意（头奖或特别奖）</option>
+          </select>
+        </div>
 
-      <!-- 模式切换：按时段 / 按时间区间 -->
-      <div class="field wide">
-        <label>规则模式</label>
-        <div class="chips">
-          <label class="chip">
-            <input type="radio" name="mode" value="slots" checked onclick="toggleMode('slots')">
-            按时段（每小时 :50）
-          </label>
-          <label class="chip">
-            <input type="radio" name="mode" value="range" onclick="toggleMode('range')">
-            按时间区间（高级）
-          </label>
-        </div>
-      </div>
-
-      <!-- 按时段：小时小格（9–23），固定 :50 -->
-      <div id="slot-mode" class="field wide">
-        <label>生成时段（勾选小时，固定在每小时 :50）</label>
-        <div class="chips" style="max-width:none; flex-wrap:wrap">
-          <label class="chip"><input type="checkbox" name="slot_hours" value="9"  checked> 09:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="10" checked> 10:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="11" checked> 11:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="12" checked> 12:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="13" checked> 13:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="14" checked> 14:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="15" checked> 15:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="16" checked> 16:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="17" checked> 17:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="18" checked> 18:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="19" checked> 19:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="20" checked> 20:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="21" checked> 21:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="22" checked> 22:50</label>
-          <label class="chip"><input type="checkbox" name="slot_hours" value="23" checked> 23:50</label>
-        </div>
-        <div style="margin-top:6px; display:flex; gap:8px;">
-          <button type="button" class="btn secondary" onclick="checkAll('slot_hours', true)">全选</button>
-          <button type="button" class="btn secondary" onclick="checkAll('slot_hours', false)">全不选</button>
-        </div>
-      </div>
-
-      <!-- 高级：按时间区间（折叠隐藏；仅在需要时使用） -->
-      <div id="range-mode" class="field wide" style="display:none">
-        <div style="display:flex; gap:12px; flex-wrap:wrap">
-          <div class="field">
-            <label>开始时间</label>
-            <input type="datetime-local" name="start_at" value="{{ now_local or '' }}">
-          </div>
-          <div class="field">
-            <label>结束时间</label>
-            <input type="datetime-local" name="end_at" value="{{ default_end or now_local or '' }}">
+        <div class="col-6">
+          <label>市场（多选）</label>
+          <div class="chips">
+            {% for m in "MPTSHEBKW" %}
+              <label class="chip">
+                <!-- 默认不全选：移除 checked -->
+                <input type="checkbox" name="markets" value="{{ m }}"> {{ m }}
+              </label>
+            {% endfor %}
           </div>
         </div>
-        <div style="color:#777; font-size:12px; margin-top:6px;">
-          默认不需要使用此模式；只有在非常规窗口时才启用。
+
+        <!-- 模式切换：按时段 / 按时间区间 -->
+        <div class="col-6">
+          <label>规则模式</label>
+          <div class="chips">
+            <label class="chip"><input type="radio" name="mode" value="slots" checked onclick="toggleMode('slots')"> 按时段（每小时 :50）</label>
+            <label class="chip"><input type="radio" name="mode" value="range" onclick="toggleMode('range')"> 按时间区间（高级）</label>
+          </div>
         </div>
-      </div>
 
-      <div class="field wide">
-        <label>备注（可选）</label>
-        <input type="text" name="note" placeholder="例：09:50 M 头奖强制 99">
-      </div>
+        <!-- 按时段：小时小格（默认不全选） -->
+        <div id="slot-mode" class="col-12">
+          <label>生成时段（勾选小时，固定在每小时 :50）</label>
+          <div class="chips">
+            {% for h in range(9,24) %}
+              <label class="chip"><input type="checkbox" name="slot_hours" value="{{ h }}"> {{ "%02d:50"|format(h) }}</label>
+            {% endfor %}
+          </div>
+        </div>
 
-      <div class="field">
-        <button type="submit" class="btn">保存规则</button>
-      </div>
-    </form>
+        <!-- 高级：按时间区间（默认当天；仅在需要时使用） -->
+        <div id="range-mode" class="col-12" style="display:none">
+          <div class="rule-form" style="grid-template-columns: repeat(12, 1fr); gap:12px;">
+            <div class="col-6">
+              <label>开始时间（默认当天 00:00）</label>
+              <input type="datetime-local" name="start_at" value="{{ start_today_local or '' }}">
+            </div>
+            <div class="col-6">
+              <label>结束时间（默认当天 23:59）</label>
+              <input type="datetime-local" name="end_at" value="{{ end_today_local or '' }}">
+            </div>
+          </div>
+          <div style="color:#777; font-size:12px; margin-top:6px;">通常无需使用此模式；如需临时窗口可切换。</div>
+        </div>
+
+        <div class="col-12">
+          <label>备注（可选）</label>
+          <input type="text" name="note" placeholder="例：12:50 S 头奖强制 01">
+        </div>
+
+        <div class="col-3">
+          <button type="submit" class="btn" style="width:100%">保存规则</button>
+        </div>
+      </form>
+    </div>
 
     {% if rules %}
-      <div style="margin-top:14px; overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>号码</th>
-              <th>动作</th>
-              <th>位置</th>
-              <th>市场</th>
-              <th>模式</th>
-              <th>时段</th>
-              <th>开始</th>
-              <th>结束</th>
-              <th>状态</th>
-              <th>备注</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in rules %}
+      <div class="card">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
               <tr>
-                <td>{{ r.id }}</td>
-                <td class="num-strong">{{ r.number }}</td>
-                <td>{{ '强制' if r.action=='force' else '排除' }}</td>
-                <td>{{ r.scope }}</td>
-                <td>{{ r.markets or '全部' }}</td>
-                <td>{{ '按时段' if (r.use_slots is defined and r.use_slots) else '按区间' }}</td>
-                <td>
-                  {% if r.use_slots is defined and r.use_slots and r.slot_hours %}
-                    {% set _hrs = r.slot_hours.split(',') %}
-                    {% for hh in _hrs %}{{ "%02d:50"|format(hh|int) }}{% if not loop.last %}, {% endif %}{% endfor %}
-                  {% else %}-{% endif %}
-                </td>
-                <td>{{ r.start_at.strftime("%Y-%m-%d %H:%M") }}</td>
-                <td>{{ r.end_at.strftime("%Y-%m-%d %H:%M") }}</td>
-                <td>
-                  {% if r.active %}
-                    <span class="pill">启用</span>
-                  {% else %}
-                    <span class="pill">停用</span>
-                  {% endif %}
-                </td>
-                <td>{{ r.note or '' }}</td>
-                <td class="td-actions">
-                  <form method="post" action="{{ url_for('admin_toggle_rule', rid=r.id) }}">
-                    <button type="submit" class="btn secondary">{{ '停用' if r.active else '启用' }}</button>
-                  </form>
-                  <form method="post" action="{{ url_for('admin_delete_rule', rid=r.id) }}" onsubmit="return confirm('确认删除该规则？');">
-                    <button type="submit" class="btn danger">删除</button>
-                  </form>
-                </td>
+                <th>ID</th>
+                <th>号码</th>
+                <th>动作</th>
+                <th>位置</th>
+                <th>市场</th>
+                <th>模式</th>
+                <th>时段</th>
+                <th>开始</th>
+                <th>结束</th>
+                <th>状态</th>
+                <th>备注</th>
+                <th>操作</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% for r in rules %}
+                <tr>
+                  <td>{{ r.id }}</td>
+                  <td class="num-strong">{{ r.number }}</td>
+                  <td>{{ '强制' if r.action=='force' else '排除' }}</td>
+                  <td>{{ r.scope }}</td>
+                  <td>{{ r.markets or '全部' }}</td>
+                  <td>{{ '按时段' if (r.use_slots is defined and r.use_slots) else '按区间' }}</td>
+                  <td>
+                    {% if r.use_slots is defined and r.use_slots and r.slot_hours %}
+                      {% set _hrs = r.slot_hours.split(',') %}
+                      {% for hh in _hrs %}{{ "%02d:50"|format(hh|int) }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    {% else %}-{% endif %}
+                  </td>
+                  <td>{{ r.start_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                  <td>{{ r.end_at.strftime("%Y-%m-%d %H:%M") }}</td>
+                  <td>
+                    {% if r.active %}<span class="pill">启用</span>{% else %}<span class="pill">停用</span>{% endif %}
+                  </td>
+                  <td>{{ r.note or '' }}</td>
+                  <td class="td-actions">
+                    <form method="post" action="{{ url_for('admin_toggle_rule', rid=r.id) }}">
+                      <button type="submit" class="btn secondary">{{ '停用' if r.active else '启用' }}</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin_delete_rule', rid=r.id) }}" onsubmit="return confirm('确认删除该规则？');">
+                      <button type="submit" class="btn danger">删除</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div class="no-data">暂无开奖记录</div>
+    {% endif %}
+
+    {% if draws %}
+      <div class="card" style="margin-top:16px;">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>期号</th>
+                <th>市场</th>
+                <th>头奖</th>
+                <th>特别奖</th>
+                <th>大小</th>
+                <th>单双</th>
+                <th>生成时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in draws %}
+                <tr>
+                  <td>{{ d.code }}</td>
+                  <td>{{ d.market }}</td>
+                  <td class="num-strong">{{ d.head }}</td>
+                  <td>{{ d.specials }}</td>
+                  <td>{{ d.size_type }}</td>
+                  <td>{{ d.parity_type }}</td>
+                  <td>{{ d.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     {% endif %}
   </div>
 
-  {% if draws %}
-    <table>
-      <thead>
-        <tr>
-          <th>期号</th>
-          <th>市场</th>
-          <th>头奖</th>
-          <th>特别奖</th>
-          <th>大小</th>
-          <th>单双</th>
-          <th>生成时间</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for d in draws %}
-          <tr>
-            <td>{{ d.code }}</td>
-            <td>{{ d.market }}</td>
-            <td class="num-strong">{{ d.head }}</td>
-            <td>{{ d.specials }}</td>
-            <td>{{ d.size_type }}</td>
-            <td>{{ d.parity_type }}</td>
-            <td>{{ d.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <div class="no-data">暂无开奖记录</div>
-  {% endif %}
-
   <script>
-    function selectAllMarkets(checked){
-      document.querySelectorAll('input[name="markets"]').forEach(cb=>cb.checked = checked);
-    }
-    function checkAll(name, checked){
-      document.querySelectorAll('input[name="'+name+'"]').forEach(cb=>cb.checked = checked);
-    }
     function toggleMode(mode){
       const slot = document.getElementById('slot-mode');
       const range = document.getElementById('range-mode');
@@ -345,7 +273,6 @@
         if(end)   end.required   = true;
       }
     }
-    // 初始根据选中模式设置显示 & required
     document.addEventListener('DOMContentLoaded',()=>{
       const checked = document.querySelector('input[name="mode"]:checked');
       toggleMode(checked ? checked.value : 'slots');
