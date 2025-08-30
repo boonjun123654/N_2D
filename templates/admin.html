@@ -91,7 +91,7 @@
       padding:8px 10px; border:1px solid #ccc; border-radius:8px; min-width:120px;
       font-size:14px; background:#fff;
     }
-    .chips{display:flex; gap:6px; flex-wrap:wrap; max-width:420px}
+    .chips{display:flex; gap:6px; flex-wrap:wrap; max-width:640px}
     .chip{
       background:#f4f1fa; border:1px solid #e6dbff;
       padding:4px 8px; border-radius:999px; display:flex; gap:6px; align-items:center;
@@ -162,18 +162,67 @@
         </div>
       </div>
 
-      <div class="field">
-        <label>开始时间</label>
-        <input type="datetime-local" name="start_at" value="{{ now_local or '' }}" required>
+      <!-- 模式切换：按时段 / 按时间区间 -->
+      <div class="field wide">
+        <label>规则模式</label>
+        <div class="chips">
+          <label class="chip">
+            <input type="radio" name="mode" value="slots" checked onclick="toggleMode('slots')">
+            按时段（每小时 :50）
+          </label>
+          <label class="chip">
+            <input type="radio" name="mode" value="range" onclick="toggleMode('range')">
+            按时间区间（高级）
+          </label>
+        </div>
       </div>
-      <div class="field">
-        <label>结束时间</label>
-        <input type="datetime-local" name="end_at" value="{{ default_end or now_local or '' }}" required>
+
+      <!-- 按时段：小时小格（9–23），固定 :50 -->
+      <div id="slot-mode" class="field wide">
+        <label>生成时段（勾选小时，固定在每小时 :50）</label>
+        <div class="chips" style="max-width:none; flex-wrap:wrap">
+          <label class="chip"><input type="checkbox" name="slot_hours" value="9"  checked> 09:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="10" checked> 10:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="11" checked> 11:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="12" checked> 12:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="13" checked> 13:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="14" checked> 14:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="15" checked> 15:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="16" checked> 16:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="17" checked> 17:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="18" checked> 18:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="19" checked> 19:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="20" checked> 20:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="21" checked> 21:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="22" checked> 22:50</label>
+          <label class="chip"><input type="checkbox" name="slot_hours" value="23" checked> 23:50</label>
+        </div>
+        <div style="margin-top:6px; display:flex; gap:8px;">
+          <button type="button" class="btn secondary" onclick="checkAll('slot_hours', true)">全选</button>
+          <button type="button" class="btn secondary" onclick="checkAll('slot_hours', false)">全不选</button>
+        </div>
+      </div>
+
+      <!-- 高级：按时间区间（折叠隐藏；仅在需要时使用） -->
+      <div id="range-mode" class="field wide" style="display:none">
+        <div style="display:flex; gap:12px; flex-wrap:wrap">
+          <div class="field">
+            <label>开始时间</label>
+            <input type="datetime-local" name="start_at" value="{{ now_local or '' }}">
+          </div>
+          <div class="field">
+            <label>结束时间</label>
+            <input type="datetime-local" name="end_at" value="{{ default_end or now_local or '' }}">
+          </div>
+        </div>
+        <div style="color:#777; font-size:12px; margin-top:6px;">
+          默认不需要使用此模式；只有在非常规窗口时才启用。
+        </div>
       </div>
 
       <div class="field wide">
         <label>备注（可选）</label>
-        <input type="text" name="note" placeholder="例：47 不出现在头奖（M/H 09:00-12:00）">
+        <input type="text" name="note" placeholder="例：09:50 M 头奖强制 99">
       </div>
 
       <div class="field">
@@ -191,6 +240,8 @@
               <th>动作</th>
               <th>位置</th>
               <th>市场</th>
+              <th>模式</th>
+              <th>时段</th>
               <th>开始</th>
               <th>结束</th>
               <th>状态</th>
@@ -206,6 +257,13 @@
                 <td>{{ '强制' if r.action=='force' else '排除' }}</td>
                 <td>{{ r.scope }}</td>
                 <td>{{ r.markets or '全部' }}</td>
+                <td>{{ '按时段' if (r.use_slots is defined and r.use_slots) else '按区间' }}</td>
+                <td>
+                  {% if r.use_slots is defined and r.use_slots and r.slot_hours %}
+                    {% set _hrs = r.slot_hours.split(',') %}
+                    {% for hh in _hrs %}{{ "%02d:50"|format(hh|int) }}{% if not loop.last %}, {% endif %}{% endfor %}
+                  {% else %}-{% endif %}
+                </td>
                 <td>{{ r.start_at.strftime("%Y-%m-%d %H:%M") }}</td>
                 <td>{{ r.end_at.strftime("%Y-%m-%d %H:%M") }}</td>
                 <td>
@@ -267,7 +325,31 @@
     function selectAllMarkets(checked){
       document.querySelectorAll('input[name="markets"]').forEach(cb=>cb.checked = checked);
     }
+    function checkAll(name, checked){
+      document.querySelectorAll('input[name="'+name+'"]').forEach(cb=>cb.checked = checked);
+    }
+    function toggleMode(mode){
+      const slot = document.getElementById('slot-mode');
+      const range = document.getElementById('range-mode');
+      const start = document.querySelector('input[name="start_at"]');
+      const end   = document.querySelector('input[name="end_at"]');
+      if(mode==='slots'){
+        slot.style.display='';
+        range.style.display='none';
+        if(start) start.required = false;
+        if(end)   end.required   = false;
+      }else{
+        slot.style.display='none';
+        range.style.display='';
+        if(start) start.required = true;
+        if(end)   end.required   = true;
+      }
+    }
+    // 初始根据选中模式设置显示 & required
+    document.addEventListener('DOMContentLoaded',()=>{
+      const checked = document.querySelector('input[name="mode"]:checked');
+      toggleMode(checked ? checked.value : 'slots');
+    });
   </script>
 </body>
 </html>
-
