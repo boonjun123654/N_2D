@@ -54,17 +54,27 @@ def _parse_markets_str(s: str):
     return set([x.strip().upper() for x in s.split(",") if x.strip()])
 
 def _get_active_rules_for_market(now_dt, market):
-    # 取时间命中的启用规则，再按 market 过滤（空/None 代表全部市场）
-    active = GenRule2D.query.filter(
-        GenRule2D.active == True,
-        GenRule2D.start_at <= now_dt,
-        GenRule2D.end_at >= now_dt
-    ).all()
+    candidates = GenRule2D.query.filter(GenRule2D.active == True).all()
     picked = []
-    for r in active:
+    for r in candidates:
+        # 市场命中
         markets = _parse_markets_str(r.markets)
-        if market in markets:
-            picked.append(r)
+        if market not in markets:
+            continue
+
+        if r.use_slots:
+            # 仅在 :50 且小时在选中列表时命中
+            if now_dt.minute != 50:
+                continue
+            hour_list = [h.strip() for h in (r.slot_hours or '').split(',') if h.strip()]
+            if str(now_dt.hour) not in hour_list:
+                continue
+        else:
+            # 旧：时间区间
+            if not (r.start_at <= now_dt <= r.end_at):
+                continue
+
+        picked.append(r)
     return picked
 
 def generate_numbers_for_time(hour, minute):
@@ -191,29 +201,48 @@ def _require_login():
 def admin_add_rule():
     need = _require_login()
     if need: return need
-    number = request.form.get('number', '').strip()
-    action = request.form.get('action', 'exclude')
-    scope  = request.form.get('scope', 'any')
+
+    number  = (request.form.get('number', '').strip() or '0').zfill(2)
+    action  = request.form.get('action', 'exclude')
+    scope   = request.form.get('scope', 'any')
     markets = ",".join(request.form.getlist('markets'))  # 多选
-    note = request.form.get('note', '')
+    note    = request.form.get('note', '')
 
-    # datetime-local -> 本地时间
-    start_raw = request.form.get('start_at')
-    end_raw   = request.form.get('end_at')
-    # 格式：YYYY-MM-DDTHH:MM
-    start_dt = MY_TZ.localize(datetime.strptime(start_raw, "%Y-%m-%dT%H:%M"))
-    end_dt   = MY_TZ.localize(datetime.strptime(end_raw,   "%Y-%m-%dT%H:%M"))
+    mode = request.form.get('mode', 'slots')  # 'slots' | 'range'
+    use_slots = (mode == 'slots')
 
-    # 若结束时间不大于开始时间，自动延长12小时
-    if end_dt <= start_dt:
-        end_dt = start_dt + timedelta(hours=12)
+    if use_slots:
+        # ✅ 按时段：收集小时（9..23），minute 固定 50
+        slot_hours = request.form.getlist('slot_hours')  # ['9','10',...]
+        slot_hours = sorted({h for h in slot_hours if h.isdigit() and 9 <= int(h) <= 23}, key=int)
+        slot_hours_csv = ",".join(slot_hours)
 
-    number = number.zfill(2)
-    rule = GenRule2D(
-        number=number, action=action, scope=scope,
-        markets=markets, start_at=start_dt, end_at=end_dt,
-        active=True, note=note
-    )
+        # 为兼容非空 start/end，这里给超宽范围
+        start_dt = MY_TZ.localize(datetime(2000,1,1,0,0))
+        end_dt   = MY_TZ.localize(datetime(2099,12,31,23,59))
+
+        rule = GenRule2D(
+            number=number, action=action, scope=scope, markets=markets,
+            start_at=start_dt, end_at=end_dt,
+            active=True, note=note,
+            use_slots=True, slot_hours=slot_hours_csv
+        )
+    else:
+        # 🟨 高级：按时间区间（保留旧逻辑）
+        start_raw = request.form.get('start_at')
+        end_raw   = request.form.get('end_at')
+        start_dt = MY_TZ.localize(datetime.strptime(start_raw, "%Y-%m-%dT%H:%M"))
+        end_dt   = MY_TZ.localize(datetime.strptime(end_raw,   "%Y-%m-%dT%H:%M"))
+        if end_dt <= start_dt:
+            end_dt = start_dt + timedelta(hours=12)
+
+        rule = GenRule2D(
+            number=number, action=action, scope=scope, markets=markets,
+            start_at=start_dt, end_at=end_dt,
+            active=True, note=note,
+            use_slots=False, slot_hours=None
+        )
+
     db.session.add(rule)
     db.session.commit()
     return redirect(url_for('admin'))
