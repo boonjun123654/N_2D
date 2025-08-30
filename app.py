@@ -202,7 +202,11 @@ def admin_add_rule():
     end_raw   = request.form.get('end_at')
     # 格式：YYYY-MM-DDTHH:MM
     start_dt = MY_TZ.localize(datetime.strptime(start_raw, "%Y-%m-%dT%H:%M"))
-    end_dt   = MY_TZ.localize(datetime.strptime(end_raw, "%Y-%m-%dT%H:%M"))
+    end_dt   = MY_TZ.localize(datetime.strptime(end_raw,   "%Y-%m-%dT%H:%M"))
+
+    # 若结束时间不大于开始时间，自动延长12小时
+    if end_dt <= start_dt:
+        end_dt = start_dt + timedelta(hours=12)
 
     number = number.zfill(2)
     rule = GenRule2D(
