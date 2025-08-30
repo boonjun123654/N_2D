@@ -21,12 +21,16 @@ class DrawResult(db.Model):
 class GenRule2D(db.Model):
     __tablename__ = 'gen_rule_2d'
     id = db.Column(db.Integer, primary_key=True)
-    number = db.Column(db.String(2), nullable=False)      # '00'~'99'
-    action = db.Column(db.String(8), nullable=False)       # 'force' | 'exclude'
-    scope  = db.Column(db.String(10), nullable=False)      # 'head' | 'specials' | 'any'
-    markets = db.Column(db.String(20), nullable=True)      # 逗号分隔，如 'M,P,T'；为空=全部
+    number = db.Column(db.String(2), nullable=False)
+    action = db.Column(db.String(16), nullable=False)       # 'force' | 'exclude'
+    scope  = db.Column(db.String(16), nullable=False)       # 'head' | 'specials' | 'any'
+    markets = db.Column(db.String(32))                      # CSV，比如 "M,P,T"
     start_at = db.Column(db.DateTime(timezone=True), nullable=False)
     end_at   = db.Column(db.DateTime(timezone=True), nullable=False)
-    active   = db.Column(db.Boolean, nullable=False, default=True)
-    note     = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    active   = db.Column(db.Boolean, default=True)
+    note     = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+
+    # 🆕 新增：时段模式（9~23点的小时，固定 :50）
+    use_slots  = db.Column(db.Boolean, default=False)
+    slot_hours = db.Column(db.String(64))  # CSV，例如 "9,10,11"
