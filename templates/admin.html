@@ -32,7 +32,6 @@
     }
     .logout-btn:hover{background:#c8235d}
 
-    /* 容器与卡片 */
     .wrap{ width:96%; max-width:1200px; margin:18px auto; }
     .card{
       background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.07);
@@ -40,14 +39,13 @@
     }
     .card h3{ margin:0 0 14px; color:var(--purple-700); font-size:18px; }
 
-    /* 规则表单（更整齐的网格布局） */
     .rule-form{ display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; align-items:end; }
     .col-3{ grid-column: span 3 }
     .col-4{ grid-column: span 4 }
     .col-6{ grid-column: span 6 }
     .col-12{ grid-column: span 12 }
     label{ font-size:13px; color:#555; margin-bottom:6px; display:block }
-    input[type="number"], input[type="text"], input[type="datetime-local"], select{
+    input[type="number"], input[type="text"], input[type="datetime-local"], input[type="date"], input[type="time"], select{
       padding:9px 10px; border:1px solid #ccc; border-radius:10px; font-size:14px; width:100%; background:#fff;
     }
     .chips{ display:flex; gap:8px; flex-wrap:wrap }
@@ -58,7 +56,6 @@
     .pill{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #eee; background:#fafafa; }
     .num-strong{ color:var(--pink); font-weight:700 }
 
-    /* 表格 */
     table{ width:100%; border-collapse:collapse; background:#fff; overflow:hidden; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06); }
     th,td{ border:1px solid var(--gray-300); padding:10px 12px; text-align:center; font-size:14px; }
     thead th{ background:var(--purple-500); color:#fff; font-weight:600 }
@@ -82,10 +79,35 @@
 
   <div class="wrap">
 
-    <!-- 今日下注明细 -->
+    <!-- 筛选表单（日期 + 时间段） -->
+    <div class="card" style="margin-bottom:16px;">
+      <h3>⏱ 筛选下注统计</h3>
+      <form class="rule-form" method="get" action="{{ url_for('admin') }}">
+        <div class="col-4">
+          <label>日期</label>
+          <input type="date" name="date" value="{{ sel_date or '' }}">
+        </div>
+        <div class="col-3">
+          <label>开始时间</label>
+          <input type="time" name="start" value="{{ sel_start or '00:00' }}">
+        </div>
+        <div class="col-3">
+          <label>结束时间</label>
+          <input type="time" name="end" value="{{ sel_end or '23:59' }}">
+        </div>
+        <div class="col-2">
+          <button type="submit" class="btn" style="width:100%;">应用筛选</button>
+        </div>
+      </form>
+      <div style="color:#777; font-size:12px; margin-top:6px;">
+        统计基于 <b>Asia/Kuala_Lumpur</b> 本地时间窗口（会自动换算为 UTC 查询）。
+      </div>
+    </div>
+
+    <!-- 今日/区间下注明细 -->
     {% if per_number or bsds %}
       <div class="card" style="margin-bottom:16px;">
-        <h3>📋 今日下注明细（按号码）</h3>
+        <h3>📋 下注明细（按号码）</h3>
         {% if per_number %}
           <div style="overflow-x:auto;">
             <table>
@@ -110,7 +132,7 @@
             </table>
           </div>
         {% else %}
-          <div class="no-data">今天暂无号码类下注</div>
+          <div class="no-data">所选时间段内暂无号码类下注</div>
         {% endif %}
 
         <h3 style="margin-top:18px;">🔢 大小 / 单双（合计）</h3>
@@ -150,7 +172,7 @@
       </div>
     {% endif %}
 
-    <!-- 规则面板 -->
+    <!-- 规则面板（原样保留） -->
     <div class="card" style="margin-bottom:16px;">
       <h3>🎛 自定 / 排除 生成规则</h3>
       <form class="rule-form" method="post" action="{{ url_for('admin_add_rule') }}">
