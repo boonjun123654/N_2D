@@ -338,11 +338,17 @@ def admin():
             AND created_at BETWEEN :s AND :e
         """), {"s": start_utc, "e": end_utc}).mappings().one()
 
+        b  = float(tot.get("b", 0)  or 0)
+        s  = float(tot.get("s", 0)  or 0)
+        ds = float(tot.get("ds", 0) or 0)
+        ss = float(tot.get("ss", 0) or 0)
+
+        # 这里保持大写键，和模板一致
         bsds = {
-          "b":  {"amt": float(tot["b"]),  "est": float(tot["b"])  * 0.90},
-          "s":  {"amt": float(tot["s"]),  "est": float(tot["s"])  * 0.90},
-          "ds": {"amt": float(tot["ds"]), "est": float(tot["ds"]) * 0.90},
-          "ss": {"amt": float(tot["ss"]), "est": float(tot["ss"]) * 0.90},
+          "B":  {"amt": b,  "est": b  * 0.90},
+          "S":  {"amt": s,  "est": s  * 0.90},
+          "DS": {"amt": ds, "est": ds * 0.90},
+          "SS": {"amt": ss, "est": ss * 0.90},
         }
 
     return render_template('admin.html',
