@@ -300,68 +300,59 @@ def admin():
         return redirect(url_for('login'))
 
     with app.app_context():
+        # 最近开奖与规则照旧
         results = DrawResult.query.order_by(DrawResult.code.desc(), DrawResult.market.asc()).limit(100).all()
         rules = GenRule2D.query.order_by(GenRule2D.created_at.desc()).all()
 
-        # === 计算“今天”的下注汇总 ===
-        start_utc, end_utc = _today_range_utc()
+        # === 读取日期/时间段筛选 ===
+        start_utc, end_utc, sel_date, sel_start, sel_end = _range_from_request()
 
-        q = (
-            db.session.query(
-                Bet2D.number.label("number"),
-                func.coalesce(func.sum(Bet2D.amount_n1), 0).label("sum_n1"),
-                func.coalesce(func.sum(Bet2D.amount_n),  0).label("sum_n"),
-            )
-            .filter(
-                Bet2D.status == 'active',
-                Bet2D.created_at >= start_utc,
-                Bet2D.created_at <= end_utc
-            )
-            .group_by(Bet2D.number)
-        )
-        rows = q.all()
+        # === 今日（或选择窗口）下注汇总（号码维度）===
+        rows = db.session.execute(text("""
+          SELECT number,
+                 COALESCE(SUM(amount_n1),0) AS sum_n1,
+                 COALESCE(SUM(amount_n),0)  AS sum_n
+          FROM bets_2d
+          WHERE status='active'
+            AND created_at BETWEEN :s AND :e
+          GROUP BY number
+          ORDER BY number
+        """), {"s": start_utc, "e": end_utc}).mappings().all()
 
-        # 单号明细：按号码升序
-        per_number = []
-        for r in rows:
-            # 预计中奖金额（头奖口径）：N1*50 + N*28
-            est_win = float(r.sum_n1) * 50.0 + float(r.sum_n) * 28.0
-            per_number.append({
-                "number": str(r.number).zfill(2),
-                "n1": float(r.sum_n1),
-                "n":  float(r.sum_n),
-                "est": est_win
-            })
-        per_number.sort(key=lambda x: x["number"])
+        per_number = [{
+            "number": str(r["number"]).zfill(2),
+            "n1": float(r["sum_n1"]),
+            "n":  float(r["sum_n"]),
+            # 预计中奖金额（头奖）：N1*50 + N*28
+            "est": float(r["sum_n1"])*50.0 + float(r["sum_n"])*28.0
+        } for r in rows]
 
-        # 大小单双汇总
-        agg = (
-            db.session.query(
-                func.coalesce(func.sum(Bet2D.amount_b),  0).label("B"),
-                func.coalesce(func.sum(Bet2D.amount_s),  0).label("S"),
-                func.coalesce(func.sum(Bet2D.amount_ds), 0).label("DS"),
-                func.coalesce(func.sum(Bet2D.amount_ss), 0).label("SS"),
-            )
-            .filter(
-                Bet2D.status == 'active',
-                Bet2D.created_at >= start_utc,
-                Bet2D.created_at <= end_utc
-            )
-            .one()
-        )
+        # === 大小/单双合计 ===
+        tot = db.session.execute(text("""
+          SELECT COALESCE(SUM(amount_b),0)  AS B,
+                 COALESCE(SUM(amount_s),0)  AS S,
+                 COALESCE(SUM(amount_ds),0) AS DS,
+                 COALESCE(SUM(amount_ss),0) AS SS
+          FROM bets_2d
+          WHERE status='active'
+            AND created_at BETWEEN :s AND :e
+        """), {"s": start_utc, "e": end_utc}).mappings().one()
 
         bsds = {
-            "B":  {"amt": float(agg.B),  "est": float(agg.B)  * 0.90},
-            "S":  {"amt": float(agg.S),  "est": float(agg.S)  * 0.90},
-            "DS": {"amt": float(agg.DS), "est": float(agg.DS) * 0.90},
-            "SS": {"amt": float(agg.SS), "est": float(agg.SS) * 0.90},
+          "B":  {"amt": float(tot["B"]),  "est": float(tot["B"])  * 0.90},
+          "S":  {"amt": float(tot["S"]),  "est": float(tot["S"])  * 0.90},
+          "DS": {"amt": float(tot["DS"]), "est": float(tot["DS"]) * 0.90},
+          "SS": {"amt": float(tot["SS"]), "est": float(tot["SS"]) * 0.90},
         }
 
     return render_template('admin.html',
                            draws=results,
                            rules=rules,
                            per_number=per_number,
-                           bsds=bsds)
+                           bsds=bsds,
+                           sel_date=sel_date,
+                           sel_start=sel_start,
+                           sel_end=sel_end)
 
 if __name__ == '__main__':
     with app.app_context():
