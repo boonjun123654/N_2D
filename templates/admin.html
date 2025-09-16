@@ -79,30 +79,25 @@
 
   <div class="wrap">
 
-    <!-- 筛选表单（日期 + 时间段） -->
-    <div class="card" style="margin-bottom:16px;">
-      <h3>⏱ 筛选下注统计</h3>
-      <form class="rule-form" method="get" action="{{ url_for('admin') }}">
-        <div class="col-4">
-          <label>日期</label>
-          <input type="date" name="date" value="{{ sel_date or '' }}">
-        </div>
-        <div class="col-3">
-          <label>开始时间</label>
-          <input type="time" name="start" value="{{ sel_start or '00:00' }}">
-        </div>
-        <div class="col-3">
-          <label>结束时间</label>
-          <input type="time" name="end" value="{{ sel_end or '23:59' }}">
-        </div>
-        <div class="col-2">
-          <button type="submit" class="btn" style="width:100%;">应用筛选</button>
-        </div>
-      </form>
-      <div style="color:#777; font-size:12px; margin-top:6px;">
-        统计基于 <b>Asia/Kuala_Lumpur</b> 本地时间窗口（会自动换算为 UTC 查询）。
-      </div>
-    </div>
+<form method="get" action="{{ url_for('admin') }}" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:18px;">
+  <div>
+    <label>日期</label><br>
+    <input type="date" name="date" value="{{ sel_date or '' }}" required>
+  </div>
+
+  <div>
+    <label>时段</label><br>
+    <select name="hour" required>
+      {% for h in range(9,24) %}
+        <option value="{{ h }}" {% if sel_hour == h %}selected{% endif %}>{{ "%02d:00"|format(h) }} - {{ "%02d:59"|format(h) }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div style="align-self:flex-end;">
+    <button type="submit" class="btn">应用筛选</button>
+  </div>
+</form>
 
     <!-- 今日/区间下注明细 -->
     {% if per_number or bsds %}
@@ -367,3 +362,4 @@
   </script>
 </body>
 </html>
+
