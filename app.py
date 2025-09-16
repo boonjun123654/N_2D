@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime,timedelta
-from models import db, DrawResult, GenRule2D
+from models import db, DrawResult, GenRule2D,Bet2D
 import random, os
 from pytz import timezone
 from sqlalchemy import func, and_
