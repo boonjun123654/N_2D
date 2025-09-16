@@ -2,11 +2,11 @@ from flask import Flask,render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta, time as dtime
 from models import db, DrawResult, GenRule2D,Bet2D
 import random, os
 from pytz import timezone
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_,text
 
 MY_TZ = timezone("Asia/Kuala_Lumpur")
 
@@ -48,6 +48,42 @@ def login():
 def logout():
     session.clear()  # 清除登录状态
     return redirect(url_for('login'))
+
+def _range_from_request():
+    """
+    从 /admin?date=YYYY-MM-DD&start=HH:MM&end=HH:MM 读取筛选条件，
+    在 Asia/Kuala_Lumpur 生成对应的本地时间窗口，再转成 UTC 返回。
+    同时返回用于模板回显的字符串。
+    """
+    tz = MY_TZ
+    date_str  = request.args.get('date', '')
+    start_str = request.args.get('start', '00:00')
+    end_str   = request.args.get('end',   '23:59')
+
+    # 默认：今天
+    now_local = datetime.now(tz)
+    if not date_str:
+        date_str = now_local.strftime('%Y-%m-%d')
+
+    # 解析
+    y, m, d = [int(x) for x in date_str.split('-')]
+    sh, sm  = [int(x) for x in start_str.split(':')]
+    eh, em  = [int(x) for x in end_str.split(':')]
+
+    # 构造本地带时区时间（pytz 建议 localize）
+    start_local = tz.localize(datetime(y, m, d, sh, sm, 0, 0))
+    end_local   = tz.localize(datetime(y, m, d, eh, em, 59, 999000))
+
+    # 转 UTC
+    start_utc = start_local.astimezone(timezone("UTC"))
+    end_utc   = end_local.astimezone(timezone("UTC"))
+
+    # 回显用
+    sel_date  = date_str
+    sel_start = f"{sh:02d}:{sm:02d}"
+    sel_end   = f"{eh:02d}:{em:02d}"
+
+    return start_utc, end_utc, sel_date, sel_start, sel_end
 
 def _today_range_utc():
     now_local = datetime.now(MY_TZ)
