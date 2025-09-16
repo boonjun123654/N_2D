@@ -81,6 +81,75 @@
   </h2>
 
   <div class="wrap">
+
+    <!-- 今日下注明细 -->
+    {% if per_number or bsds %}
+      <div class="card" style="margin-bottom:16px;">
+        <h3>📋 今日下注明细（按号码）</h3>
+        {% if per_number %}
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>号码</th>
+                  <th>N1</th>
+                  <th>N</th>
+                  <th>预计中奖金额（头奖）</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for it in per_number %}
+                  <tr>
+                    <td class="num-strong">{{ it.number }}</td>
+                    <td>{{ '%.0f'|format(it.n1) }}</td>
+                    <td>{{ '%.0f'|format(it.n) }}</td>
+                    <td>RM{{ '%.2f'|format(it.est) }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="no-data">今天暂无号码类下注</div>
+        {% endif %}
+
+        <h3 style="margin-top:18px;">🔢 大小 / 单双（合计）</h3>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>类型</th>
+                <th>下注总额</th>
+                <th>预计中奖金额</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>大</td>
+                <td>{{ '%.0f'|format(bsds.B.amt) }}</td>
+                <td>RM{{ '%.2f'|format(bsds.B.est) }}</td>
+              </tr>
+              <tr>
+                <td>小</td>
+                <td>{{ '%.0f'|format(bsds.S.amt) }}</td>
+                <td>RM{{ '%.2f'|format(bsds.S.est) }}</td>
+              </tr>
+              <tr>
+                <td>单</td>
+                <td>{{ '%.0f'|format(bsds.DS.amt) }}</td>
+                <td>RM{{ '%.2f'|format(bsds.DS.est) }}</td>
+              </tr>
+              <tr>
+                <td>双</td>
+                <td>{{ '%.0f'|format(bsds.SS.amt) }}</td>
+                <td>RM{{ '%.2f'|format(bsds.SS.est) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
     <!-- 规则面板 -->
     <div class="card" style="margin-bottom:16px;">
       <h3>🎛 自定 / 排除 生成规则</h3>
@@ -110,14 +179,12 @@
           <div class="chips">
             {% for m in "MPTSHEBKW" %}
               <label class="chip">
-                <!-- 默认不全选：移除 checked -->
                 <input type="checkbox" name="markets" value="{{ m }}"> {{ m }}
               </label>
             {% endfor %}
           </div>
         </div>
 
-        <!-- 模式切换：按时段 / 按时间区间 -->
         <div class="col-6">
           <label>规则模式</label>
           <div class="chips">
@@ -126,7 +193,6 @@
           </div>
         </div>
 
-        <!-- 按时段：小时小格（默认不全选） -->
         <div id="slot-mode" class="col-12">
           <label>生成时段（勾选小时，固定在每小时 :50）</label>
           <div class="chips">
@@ -136,7 +202,6 @@
           </div>
         </div>
 
-        <!-- 高级：按时间区间（默认当天；仅在需要时使用） -->
         <div id="range-mode" class="col-12" style="display:none">
           <div class="rule-form" style="grid-template-columns: repeat(12, 1fr); gap:12px;">
             <div class="col-6">
