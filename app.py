@@ -304,24 +304,34 @@ def admin():
         results = DrawResult.query.order_by(DrawResult.code.desc(), DrawResult.market.asc()).limit(100).all()
         rules = GenRule2D.query.order_by(GenRule2D.created_at.desc()).all()
 
-        # === 读取日期/时间段筛选 ===
-        sel_date = request.args.get("date")  # e.g. 2025-09-15
-        sel_hour = request.args.get("hour", type=int)  # e.g. 15
+        # === 读取“日期 + 时段小时” ===
+        sel_date = request.args.get("date")              # e.g. "2025-09-15"
+        sel_hour = request.args.get("hour", type=int)    # e.g. 15
 
         if sel_date and sel_hour is not None:
-            dt = datetime.strptime(sel_date, "%Y-%m-%d").replace(tzinfo=MY_TZ)
-            start_utc = dt.replace(hour=sel_hour, minute=0, second=0, microsecond=0).astimezone(timezone("UTC"))
-            end_utc   = dt.replace(hour=sel_hour, minute=59, second=59, microsecond=0).astimezone(timezone("UTC"))
-        else:
-            # 默认用今天 + 当前小时
-            now_local = datetime.now(MY_TZ)
-            dt = now_local.date()
-            sel_date = dt.strftime("%Y-%m-%d")
-            sel_hour = now_local.hour
-            start_utc = now_local.replace(minute=0, second=0, microsecond=0).astimezone(timezone("UTC"))
-            end_utc   = now_local.replace(minute=59, second=59, microsecond=0).astimezone(timezone("UTC"))
+            # 兜底约束小时在 9..23 之间
+            if sel_hour < 9:  sel_hour = 9
+            if sel_hour > 23: sel_hour = 23
 
-        # === 今日（或选择窗口）下注汇总（号码维度）===
+            y, m, d = [int(x) for x in sel_date.split("-")]
+            # 用 pytz.localize 构造本地时区的时间窗口
+            start_local = MY_TZ.localize(datetime(y, m, d, sel_hour, 0, 0, 0))
+            end_local   = MY_TZ.localize(datetime(y, m, d, sel_hour, 59, 59, 999000))
+            start_utc   = start_local.astimezone(timezone("UTC"))
+            end_utc     = end_local.astimezone(timezone("UTC"))
+        else:
+            # 默认：今天当前小时
+            now_local = datetime.now(MY_TZ)
+            sel_date  = now_local.strftime("%Y-%m-%d")
+            sel_hour  = now_local.hour
+            if sel_hour < 9:  sel_hour = 9
+            if sel_hour > 23: sel_hour = 23
+            start_local = now_local.replace(hour=sel_hour, minute=0,  second=0,  microsecond=0)
+            end_local   = now_local.replace(hour=sel_hour, minute=59, second=59, microsecond=999000)
+            start_utc   = start_local.astimezone(timezone("UTC"))
+            end_utc     = end_local.astimezone(timezone("UTC"))
+
+        # === 所选时段窗口内的下注汇总（按号码）===
         rows = db.session.execute(text("""
           SELECT number,
                  COALESCE(SUM(amount_n1),0) AS sum_n1,
@@ -341,7 +351,7 @@ def admin():
             "est": float(r["sum_n1"])*50.0 + float(r["sum_n"])*28.0
         } for r in rows]
 
-        # === 大小/单双合计 ===
+        # === 大小/单双合计（同一窗口）===
         tot = db.session.execute(text("""
           SELECT COALESCE(SUM(amount_b),0)  AS b,
                  COALESCE(SUM(amount_s),0)  AS s,
@@ -357,7 +367,6 @@ def admin():
         ds = float(tot.get("ds", 0) or 0)
         ss = float(tot.get("ss", 0) or 0)
 
-        # 这里保持大写键，和模板一致
         bsds = {
           "B":  {"amt": b,  "est": b  * 0.90},
           "S":  {"amt": s,  "est": s  * 0.90},
@@ -371,8 +380,7 @@ def admin():
                            per_number=per_number,
                            bsds=bsds,
                            sel_date=sel_date,
-                           sel_start=sel_start,
-                           sel_end=sel_end)
+                           sel_hour=sel_hour) 
 
 if __name__ == '__main__':
     with app.app_context():
