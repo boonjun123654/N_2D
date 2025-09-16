@@ -305,7 +305,21 @@ def admin():
         rules = GenRule2D.query.order_by(GenRule2D.created_at.desc()).all()
 
         # === 读取日期/时间段筛选 ===
-        start_utc, end_utc, sel_date, sel_start, sel_end = _range_from_request()
+        sel_date = request.args.get("date")  # e.g. 2025-09-15
+        sel_hour = request.args.get("hour", type=int)  # e.g. 15
+
+        if sel_date and sel_hour is not None:
+            dt = datetime.strptime(sel_date, "%Y-%m-%d").replace(tzinfo=MY_TZ)
+            start_utc = dt.replace(hour=sel_hour, minute=0, second=0, microsecond=0).astimezone(timezone("UTC"))
+            end_utc   = dt.replace(hour=sel_hour, minute=59, second=59, microsecond=0).astimezone(timezone("UTC"))
+        else:
+            # 默认用今天 + 当前小时
+            now_local = datetime.now(MY_TZ)
+            dt = now_local.date()
+            sel_date = dt.strftime("%Y-%m-%d")
+            sel_hour = now_local.hour
+            start_utc = now_local.replace(minute=0, second=0, microsecond=0).astimezone(timezone("UTC"))
+            end_utc   = now_local.replace(minute=59, second=59, microsecond=0).astimezone(timezone("UTC"))
 
         # === 今日（或选择窗口）下注汇总（号码维度）===
         rows = db.session.execute(text("""
