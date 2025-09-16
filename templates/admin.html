@@ -89,7 +89,7 @@
     <label>时段</label><br>
     <select name="hour" required>
       {% for h in range(9,24) %}
-        <option value="{{ h }}" {% if sel_hour == h %}selected{% endif %}>{{ "%02d:00"|format(h) }} - {{ "%02d:59"|format(h) }}</option>
+        <option value="{{ h }}" {% if sel_hour == h %}selected{% endif %}>{{ "%02d:00"|format(h) }} - {{ "%02d:50"|format(h) }}</option>
       {% endfor %}
     </select>
   </div>
