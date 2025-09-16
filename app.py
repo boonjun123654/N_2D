@@ -329,20 +329,20 @@ def admin():
 
         # === 大小/单双合计 ===
         tot = db.session.execute(text("""
-          SELECT COALESCE(SUM(amount_b),0)  AS B,
-                 COALESCE(SUM(amount_s),0)  AS S,
-                 COALESCE(SUM(amount_ds),0) AS DS,
-                 COALESCE(SUM(amount_ss),0) AS SS
+          SELECT COALESCE(SUM(amount_b),0)  AS b,
+                 COALESCE(SUM(amount_s),0)  AS s,
+                 COALESCE(SUM(amount_ds),0) AS ds,
+                 COALESCE(SUM(amount_ss),0) AS ss
           FROM bets_2d
           WHERE status='active'
             AND created_at BETWEEN :s AND :e
         """), {"s": start_utc, "e": end_utc}).mappings().one()
 
         bsds = {
-          "B":  {"amt": float(tot["B"]),  "est": float(tot["B"])  * 0.90},
-          "S":  {"amt": float(tot["S"]),  "est": float(tot["S"])  * 0.90},
-          "DS": {"amt": float(tot["DS"]), "est": float(tot["DS"]) * 0.90},
-          "SS": {"amt": float(tot["SS"]), "est": float(tot["SS"]) * 0.90},
+          "b":  {"amt": float(tot["b"]),  "est": float(tot["b"])  * 0.90},
+          "s":  {"amt": float(tot["s"]),  "est": float(tot["s"])  * 0.90},
+          "ds": {"amt": float(tot["ds"]), "est": float(tot["ds"]) * 0.90},
+          "ss": {"amt": float(tot["ss"]), "est": float(tot["ss"]) * 0.90},
         }
 
     return render_template('admin.html',
