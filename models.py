@@ -35,21 +35,3 @@ class GenRule2D(db.Model):
     use_slots  = db.Column(db.Boolean, default=False)
     slot_hours = db.Column(db.String(64))  # CSV，例如 "9,10,11"
 
-class Bet2D(db.Model):
-    __tablename__ = 'bets_2d'
-    id = db.Column(db.Integer, primary_key=True)
-    order_code = db.Column(db.String(20))
-    agent_id = db.Column(db.Integer)
-    market = db.Column(db.String(10))
-    code = db.Column(db.String(20))           # YYYYMMDD/HHMM
-    number = db.Column(db.String(2))          # 两位字符串 '00'~'99'
-    amount_n1 = db.Column(db.Numeric)         # N1
-    amount_n  = db.Column(db.Numeric)         # N
-    amount_b  = db.Column(db.Numeric)         # 大
-    amount_s  = db.Column(db.Numeric)         # 小
-    amount_ds = db.Column(db.Numeric)         # 单
-    amount_ss = db.Column(db.Numeric)         # 双
-    status = db.Column(db.String(16))
-    created_at = db.Column(db.DateTime(timezone=True))
-    locked_at  = db.Column(db.DateTime(timezone=True))
-
