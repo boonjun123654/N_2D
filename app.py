@@ -95,7 +95,7 @@ def _today_range_utc():
 
 def _parse_markets_str(s: str):
     if not s or not s.strip():
-        return set(list("MPTSHEBKW"))  # 全部市场
+        return set(["MGV 21", "UCA 68", "SFC 99"])
     return set([x.strip().upper() for x in s.split(",") if x.strip()])
 
 def _get_active_rules_for_market(now_dt, market):
@@ -127,7 +127,7 @@ def _get_active_rules_for_market(now_dt, market):
 def generate_numbers_for_time(hour, minute):
     now = datetime.now(MY_TZ)
     draw_code = now.strftime(f"%Y%m%d/{hour:02d}{minute:02d}")
-    markets = list("MPTSHEBKW")
+    markets = ["MGV 21", "UCA 68", "SFC 99"]
 
     with app.app_context():
         for market in markets:
